@@ -1,4 +1,4 @@
-import { AY_KISA, daysUntil } from "@/lib/format"
+import { AY_KISA, daysUntil, formatDateShort } from "@/lib/format"
 import type { Customer, Payment, PaymentWithCustomer } from "@/lib/types"
 
 function pad2(n: number): string {
@@ -362,5 +362,94 @@ export function computeMonthlyRevenueTrend(
         .reduce((acc, p) => acc + p.amount, 0)
     )
     return { year, month, label: AY_KISA[month - 1], total }
+  })
+}
+
+/** Verilen tarihin ait olduğu haftanın Pazartesi'si, saat sıfırlanmış. */
+function startOfWeek(d: Date): Date {
+  const date = new Date(d)
+  date.setHours(0, 0, 0, 0)
+  const day = date.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  date.setDate(date.getDate() + diffToMonday)
+  return date
+}
+
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+export interface GrowthStats {
+  newCustomersThisWeek: number
+  newMrrThisWeek: number
+  newCustomersThisMonth: number
+  newMrrThisMonth: number
+  totalMrr: number
+}
+
+/**
+ * Bu hafta / bu ay eklenen müşteri sayısı ve bunların getirdiği aylık gelir (MRR)
+ * artışı — "sistem ne kadar büyüyor" sorusunun cevabı. Sadece aktif müşteriler
+ * sayılır; pasife alınan bir müşterinin ne zaman ayrıldığı veriden bilinmediği
+ * için büyüme yalnızca katılım tarihine (start_date) göre hesaplanır.
+ */
+export function computeGrowthStats(customers: Customer[]): GrowthStats {
+  const now = new Date()
+  const weekStart = startOfWeek(now)
+  const monthStart = startOfMonth(now)
+
+  const active = customers.filter((c) => c.status === "aktif")
+  const thisWeek = active.filter((c) => new Date(c.start_date) >= weekStart)
+  const thisMonth = active.filter((c) => new Date(c.start_date) >= monthStart)
+
+  return {
+    newCustomersThisWeek: thisWeek.length,
+    newMrrThisWeek: round2(thisWeek.reduce((acc, c) => acc + c.monthly_fee, 0)),
+    newCustomersThisMonth: thisMonth.length,
+    newMrrThisMonth: round2(thisMonth.reduce((acc, c) => acc + c.monthly_fee, 0)),
+    totalMrr: round2(active.reduce((acc, c) => acc + c.monthly_fee, 0)),
+  }
+}
+
+export interface MrrGrowthPoint {
+  weekStart: string
+  label: string
+  cumulativeMrr: number
+  cumulativeCustomers: number
+  newCustomers: number
+}
+
+/**
+ * Son N hafta için, o haftanın sonunda aktif müşteri tabanının toplam aylık
+ * geliri (MRR) ve müşteri sayısı — kümülatif büyüme eğrisi (dashboard grafiği).
+ */
+export function computeMrrGrowthTrend(customers: Customer[], weeksBack = 10): MrrGrowthPoint[] {
+  const active = customers.filter((c) => c.status === "aktif")
+  const currentWeekStart = startOfWeek(new Date())
+
+  const weekStarts: Date[] = []
+  for (let i = weeksBack - 1; i >= 0; i--) {
+    const d = new Date(currentWeekStart)
+    d.setDate(d.getDate() - i * 7)
+    weekStarts.push(d)
+  }
+
+  return weekStarts.map((weekStart) => {
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+
+    const joinedByWeekEnd = active.filter((c) => new Date(c.start_date) < weekEnd)
+    const newThisWeek = active.filter((c) => {
+      const started = new Date(c.start_date)
+      return started >= weekStart && started < weekEnd
+    })
+
+    return {
+      weekStart: weekStart.toISOString().slice(0, 10),
+      label: formatDateShort(weekStart.toISOString()),
+      cumulativeMrr: round2(joinedByWeekEnd.reduce((acc, c) => acc + c.monthly_fee, 0)),
+      cumulativeCustomers: joinedByWeekEnd.length,
+      newCustomers: newThisWeek.length,
+    }
   })
 }

@@ -1,4 +1,5 @@
 import { DueToday } from "@/components/dashboard/due-today"
+import { GrowthChart } from "@/components/dashboard/growth-chart"
 import { NotPaidThisMonth } from "@/components/dashboard/not-paid-this-month"
 import { RecentPayments } from "@/components/dashboard/recent-payments"
 import { RevenueChart } from "@/components/dashboard/revenue-chart"
@@ -10,7 +11,9 @@ import {
   buAyOdemeYapmayanlar,
   computeCollectionStatuses,
   computeDashboardStats,
+  computeGrowthStats,
   computeMonthlyRevenueTrend,
+  computeMrrGrowthTrend,
   sonOdemeler,
   yaklasanTahsilatlar,
 } from "@/lib/collections"
@@ -22,6 +25,8 @@ export default async function DashboardPage() {
   const statuses = computeCollectionStatuses(customers, payments)
   const stats = computeDashboardStats(statuses, payments)
   const revenueTrend = computeMonthlyRevenueTrend(payments, 6)
+  const growthStats = computeGrowthStats(customers)
+  const growthTrend = computeMrrGrowthTrend(customers, 10)
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,6 +36,8 @@ export default async function DashboardPage() {
       />
 
       <StatsGrid stats={stats} />
+
+      <GrowthChart stats={growthStats} trend={growthTrend} />
 
       <RevenueChart entries={revenueTrend} />
 
