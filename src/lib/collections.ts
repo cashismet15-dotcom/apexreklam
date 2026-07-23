@@ -170,6 +170,15 @@ function isDueInFutureMonth(dueDate: string, year: number, month: number): boole
   return dueYear > year || (dueYear === year && dueMonth > month)
 }
 
+/**
+ * Bir durumun vadesinde beklenen tutar. Zaten ödendiyse vade bir sonraki ayın
+ * tam ücretidir; kısmi/hiç ödenmediyse sadece kalan tutar beklenir (aksi halde
+ * kapora ikinci kez sayılır, ya da ödenmiş bir ay 0 TL olarak görünür).
+ */
+export function amountDue(s: CustomerCollectionStatus): number {
+  return s.isPaidThisMonth ? s.projectedAmount : s.remainingThisMonth
+}
+
 export function computeDashboardStats(
   statuses: CustomerCollectionStatus[],
   payments: PaymentWithCustomer[]
@@ -192,10 +201,6 @@ export function computeDashboardStats(
     .reduce((acc, s) => acc + s.remainingThisMonth, 0)
 
   const upcoming = statuses.filter((s) => !s.isOverdue)
-  // Zaten ödendiyse vade bir sonraki ayın tam ücreti; kısmi/hiç ödenmediyse
-  // sadece kalan tutar beklenir (aksi halde kapora ikinci kez sayılır).
-  const amountDue = (s: CustomerCollectionStatus) =>
-    s.isPaidThisMonth ? s.projectedAmount : s.remainingThisMonth
 
   const next7Days = upcoming
     .filter((s) => s.daysUntilDue >= 0 && s.daysUntilDue <= 7)

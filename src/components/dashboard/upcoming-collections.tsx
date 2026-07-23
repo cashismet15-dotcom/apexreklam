@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, kalanGunEtiketi } from "@/lib/format"
-import type { CustomerCollectionStatus } from "@/lib/collections"
+import { amountDue, type CustomerCollectionStatus } from "@/lib/collections"
 import { cn } from "@/lib/utils"
 
 function kalanGunBadgeClass(gun: number): string {
@@ -50,7 +50,7 @@ export function UpcomingCollections({ items }: { items: CustomerCollectionStatus
                     <span className="text-sm font-medium">{s.customer.company_name}</span>
                   </TableCell>
                   <TableCell className="text-sm font-medium tabular-nums">
-                    {formatCurrency(s.remainingThisMonth)}
+                    {formatCurrency(amountDue(s))}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(s.dueDate)}
