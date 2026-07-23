@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Clapperboard, Users, Wallet } from "lucide-react"
+import { Clapperboard, Sparkles, Users, Wallet } from "lucide-react"
 
 const apps = [
   {
@@ -20,6 +20,12 @@ const apps = [
     href: "/icerik-takip",
     icon: Clapperboard,
   },
+  {
+    title: "Manifest",
+    description: "Modun, ilkelerin ve telkinlerin — girdikçe büyüyen ciro sayacı.",
+    href: "/manifest",
+    icon: Sparkles,
+  },
 ]
 
 export default function AnaSayfa() {
@@ -33,7 +39,7 @@ export default function AnaSayfa() {
         <p className="text-sm text-muted-foreground">Devam etmek için bir uygulama seç</p>
       </div>
 
-      <div className="grid w-full max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
         {apps.map((app) => (
           <Link
             key={app.href}

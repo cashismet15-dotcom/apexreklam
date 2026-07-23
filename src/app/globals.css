@@ -128,3 +128,39 @@
     @apply font-sans;
   }
 }
+
+@keyframes manifest-float-up {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-70vh) scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes manifest-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manifest-particle,
+  .manifest-glow {
+    animation: none !important;
+  }
+}
