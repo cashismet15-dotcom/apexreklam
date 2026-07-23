@@ -1,4 +1,4 @@
-export type CustomerStatus = "aktif" | "pasif"
+export type CustomerStatus = "aktif" | "pasif" | "donduruldu"
 
 export interface Customer {
   id: string
@@ -10,6 +10,26 @@ export interface Customer {
   status: CustomerStatus
   start_date: string
   notes: string | null
+  created_at: string
+  /** Aktif dondurmanın başladığı tarih; donduruldu değilse null. */
+  frozen_since: string | null
+  /** Bugüne kadar biriken toplam dondurma günü; ödeme vadeleri bu kadar ileri kayar. */
+  freeze_offset_days: number
+  /** Danışan İçerik Takibi: logo URL'i. */
+  logo_url: string | null
+  /** Danışan İçerik Takibi: kalıcı video talimatları/notları (haftalık değil). */
+  content_notes: string | null
+}
+
+export type ContentStatus = "talimat_bekliyor" | "hazirlaniyor" | "onayda" | "yayinlandi"
+
+export interface ContentWeek {
+  id: string
+  customer_id: string
+  week_start: string
+  status: ContentStatus
+  note: string | null
+  video_url: string | null
   created_at: string
 }
 

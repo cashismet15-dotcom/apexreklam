@@ -16,24 +16,27 @@ import { NewCustomerButton } from "@/components/customers/new-customer-button"
 import { QuickPaymentButton } from "@/components/payments/quick-payment-button"
 import { computeCollectionStatuses } from "@/lib/collections"
 import { getCustomers, getPayments } from "@/lib/data"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { daysBetween, formatCurrency, formatDate } from "@/lib/format"
 import type { CustomerStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const durumStil: Record<CustomerStatus, string> = {
   aktif: "bg-emerald-50 text-emerald-700 border-emerald-200",
   pasif: "bg-muted text-muted-foreground border-transparent",
+  donduruldu: "bg-sky-50 text-sky-700 border-sky-200",
 }
 
 const durumEtiket: Record<CustomerStatus, string> = {
   aktif: "Aktif",
   pasif: "Pasif",
+  donduruldu: "Donduruldu",
 }
 
 export default async function MusterilerPage() {
   const [musteriler, odemeler] = await Promise.all([getCustomers(), getPayments()])
   const statuses = computeCollectionStatuses(musteriler, odemeler)
   const paidByCustomerId = new Map(statuses.map((s) => [s.customer.id, s]))
+  const todayIso = new Date().toISOString().slice(0, 10)
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,6 +106,15 @@ export default async function MusterilerPage() {
                       <TableCell>
                         {musteri.status === "pasif" ? (
                           <span className="text-xs text-muted-foreground">—</span>
+                        ) : musteri.status === "donduruldu" ? (
+                          <Badge
+                            variant="outline"
+                            className="font-normal bg-sky-50 text-sky-700 border-sky-200"
+                          >
+                            {musteri.frozen_since
+                              ? `${daysBetween(musteri.frozen_since, todayIso)} gündür donduruldu`
+                              : "Donduruldu"}
+                          </Badge>
                         ) : status?.isPaidThisMonth ? (
                           <Badge
                             variant="outline"

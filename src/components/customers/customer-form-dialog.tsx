@@ -125,15 +125,25 @@ export function CustomerFormDialog({
           {customer ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="status">Durum</Label>
-              <Select name="status" defaultValue={customer.status}>
-                <SelectTrigger id="status" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aktif">Aktif</SelectItem>
-                  <SelectItem value="pasif">Pasif</SelectItem>
-                </SelectContent>
-              </Select>
+              {customer.status === "donduruldu" ? (
+                <>
+                  <Input value="Donduruldu" disabled readOnly />
+                  <input type="hidden" name="status" value="donduruldu" />
+                  <span className="text-xs text-muted-foreground">
+                    Aktif etmek için müşteri listesindeki &quot;Devam Ettir&quot; işlemini kullanın.
+                  </span>
+                </>
+              ) : (
+                <Select name="status" defaultValue={customer.status}>
+                  <SelectTrigger id="status" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aktif">Aktif</SelectItem>
+                    <SelectItem value="pasif">Pasif</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
               <FieldError errors={state.fieldErrors?.status} />
             </div>
           ) : null}

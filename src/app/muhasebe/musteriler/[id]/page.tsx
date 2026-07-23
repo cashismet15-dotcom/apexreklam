@@ -18,18 +18,20 @@ import { QuickPaymentButton } from "@/components/payments/quick-payment-button"
 import { computeCollectionStatuses, computeMonthlyHistory } from "@/lib/collections"
 import { MonthlyHistoryGrid } from "@/components/customers/monthly-history-grid"
 import { getCustomerById, getPaymentsForCustomer } from "@/lib/data"
-import { AY_ADLARI, formatCurrency, formatDate } from "@/lib/format"
+import { AY_ADLARI, daysBetween, formatCurrency, formatDate } from "@/lib/format"
 import type { CustomerStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const durumStil: Record<CustomerStatus, string> = {
   aktif: "bg-emerald-50 text-emerald-700 border-emerald-200",
   pasif: "bg-muted text-muted-foreground border-transparent",
+  donduruldu: "bg-sky-50 text-sky-700 border-sky-200",
 }
 
 const durumEtiket: Record<CustomerStatus, string> = {
   aktif: "Aktif",
   pasif: "Pasif",
+  donduruldu: "Donduruldu",
 }
 
 export default async function MusteriDetayPage({
@@ -85,6 +87,23 @@ export default async function MusteriDetayPage({
                 {durumEtiket[customer.status]}
               </Badge>
             </div>
+
+            {customer.status === "donduruldu" && customer.frozen_since ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Dondurulma Tarihi</span>
+                <span className="text-sm">
+                  {formatDate(customer.frozen_since)} ·{" "}
+                  {daysBetween(customer.frozen_since, new Date().toISOString().slice(0, 10))} gündür
+                </span>
+              </div>
+            ) : null}
+
+            {customer.freeze_offset_days > 0 ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Toplam Dondurma</span>
+                <span className="text-sm">{customer.freeze_offset_days} gün</span>
+              </div>
+            ) : null}
 
             {customer.status === "aktif" ? (
               <div className="flex items-center justify-between">

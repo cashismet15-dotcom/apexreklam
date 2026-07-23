@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { supabase } from "@/lib/supabase"
 import type { ActionState } from "@/lib/actions/shared"
+import { daysBetween } from "@/lib/format"
 
 const dateString = z
   .string()
@@ -24,7 +25,7 @@ const customerSchema = z.object({
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 })
 
-const statusSchema = z.enum(["aktif", "pasif"])
+const statusSchema = z.enum(["aktif", "pasif", "donduruldu"])
 
 function parseCustomerForm(formData: FormData) {
   return customerSchema.safeParse({
@@ -106,6 +107,71 @@ export async function updateCustomer(
 
   revalidateCustomerPages()
   return { status: "success", message: "Müşteri güncellendi." }
+}
+
+/**
+ * Müşteriyi dondurur: ödeme takibi (bekleyen/geciken/dashboard) bu müşteriyi
+ * "donduruldu" statüsündeyken görmezden gelir — hiç ödemesi yokmuş gibi
+ * gecikmiş görünmez.
+ */
+export async function freezeCustomer(id: string): Promise<ActionState> {
+  const today = new Date().toISOString().slice(0, 10)
+  const { error } = await supabase
+    .from("customers")
+    .update({ status: "donduruldu", frozen_since: today })
+    .eq("id", id)
+
+  if (error) {
+    return { status: "error", message: `Müşteri dondurulamadı: ${error.message}` }
+  }
+
+  revalidateCustomerPages()
+  return { status: "success", message: "Müşteri donduruldu." }
+}
+
+/**
+ * Müşteriyi tekrar aktif eder. Dondurulduğu tarihten bugüne kaç gün geçtiyse
+ * o kadarı freeze_offset_days'e eklenir; bu da tüm gelecekteki vade
+ * tarihlerini aynı miktarda ileri kaydırır (bkz. collections.ts:addDaysIso) —
+ * donduruldu gün sayısı hiç kaybolmaz.
+ */
+export async function unfreezeCustomer(id: string): Promise<ActionState> {
+  const { data: customer, error: fetchError } = await supabase
+    .from("customers")
+    .select("frozen_since, freeze_offset_days")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (fetchError) {
+    return { status: "error", message: `Müşteri bulunamadı: ${fetchError.message}` }
+  }
+  if (!customer) {
+    return { status: "error", message: "Müşteri bulunamadı." }
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const frozenDays = customer.frozen_since
+    ? Math.max(0, daysBetween(customer.frozen_since, today))
+    : 0
+
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      status: "aktif",
+      frozen_since: null,
+      freeze_offset_days: (customer.freeze_offset_days ?? 0) + frozenDays,
+    })
+    .eq("id", id)
+
+  if (error) {
+    return { status: "error", message: `Müşteri devam ettirilemedi: ${error.message}` }
+  }
+
+  revalidateCustomerPages()
+  return {
+    status: "success",
+    message: `Müşteri devam ettirildi (${frozenDays} gün donduruldu, ödeme tarihi o kadar kaydı).`,
+  }
 }
 
 export async function deleteCustomer(id: string): Promise<ActionState> {

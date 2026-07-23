@@ -25,10 +25,18 @@ create table public.customers (
   phone text not null,
   monthly_fee numeric(12, 2) not null check (monthly_fee > 0),
   payment_day smallint not null check (payment_day between 1 and 31),
-  status text not null default 'aktif' check (status in ('aktif', 'pasif')),
+  status text not null default 'aktif' check (status in ('aktif', 'pasif', 'donduruldu')),
   start_date date not null default current_date,
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Aktif dondurmanın başladığı tarih; sadece status = 'donduruldu' iken dolu.
+  frozen_since date,
+  -- Bugüne kadar biriken toplam dondurma günü; ödeme vadeleri hesaplanırken
+  -- bu kadar ileri kaydırılır (bkz. src/lib/collections.ts:addDaysIso).
+  freeze_offset_days integer not null default 0,
+  -- Danışan İçerik Takibi modülü: logo ve kalıcı video talimatları/notları.
+  logo_url text,
+  content_notes text
 );
 
 create index customers_status_idx on public.customers (status);
@@ -72,3 +80,43 @@ create policy "anon full access" on public.payments
   to anon
   using (true)
   with check (true);
+
+-- ---------------------------------------------------------------------------
+-- content_weeks — Danışan İçerik Takibi: her müşteri için haftalık video
+-- üretim durumu (1 satır = 1 müşteri x 1 hafta).
+-- ---------------------------------------------------------------------------
+create table public.content_weeks (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customers (id) on delete cascade,
+  -- O haftanın Pazartesi'si (bkz. src/lib/content.ts:currentWeekStartIso).
+  week_start date not null,
+  status text not null default 'talimat_bekliyor'
+    check (status in ('talimat_bekliyor', 'hazirlaniyor', 'onayda', 'yayinlandi')),
+  note text,
+  video_url text,
+  created_at timestamptz not null default now(),
+  unique (customer_id, week_start)
+);
+
+create index content_weeks_customer_id_idx on public.content_weeks (customer_id);
+create index content_weeks_week_start_idx on public.content_weeks (week_start);
+
+alter table public.content_weeks enable row level security;
+
+create policy "anon full access" on public.content_weeks
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+-- Logo yüklemeleri için Storage bucket'ı.
+insert into storage.buckets (id, name, public)
+values ('client-logos', 'client-logos', true)
+on conflict (id) do nothing;
+
+create policy "anon full access to client-logos"
+  on storage.objects
+  for all
+  to anon
+  using (bucket_id = 'client-logos')
+  with check (bucket_id = 'client-logos');

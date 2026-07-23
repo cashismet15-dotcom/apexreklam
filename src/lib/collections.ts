@@ -19,6 +19,14 @@ function nextCycle(year: number, month: number): { year: number; month: number }
   return month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 }
 }
 
+/** ISO tarihe gün ekler (negatif olabilir), takvim ay/yıl taşmalarını doğru şekilde çözer. */
+function addDaysIso(iso: string, days: number): string {
+  if (!days) return iso
+  const d = new Date(iso)
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
 function prevCycle(year: number, month: number): { year: number; month: number } {
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
 }
@@ -131,6 +139,9 @@ export function computeCollectionStatuses(
       } else {
         dueDate = dueDateThisMonth
       }
+      // Geçmişte dondurulmuş günler varsa vade o kadar ileri kayar — donduruldu
+      // günler kaybolmaz, sadece ödeme tarihi ötelenir.
+      dueDate = addDaysIso(dueDate, customer.freeze_offset_days)
 
       const daysUntilDue = daysUntil(dueDate)
       const isOverdue = !isPaidThisMonth && daysUntilDue < 0

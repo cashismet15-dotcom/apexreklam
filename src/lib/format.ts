@@ -76,6 +76,15 @@ export function daysUntil(iso: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24))
 }
 
+/** İki ISO tarih arasındaki gün farkı (to - from). */
+export function daysBetween(fromIso: string, toIso: string): number {
+  const from = new Date(fromIso)
+  from.setHours(0, 0, 0, 0)
+  const to = new Date(toIso)
+  to.setHours(0, 0, 0, 0)
+  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 export function kalanGunEtiketi(iso: string): string {
   const gun = daysUntil(iso)
   if (gun < 0) return `${Math.abs(gun)} gün gecikti`
