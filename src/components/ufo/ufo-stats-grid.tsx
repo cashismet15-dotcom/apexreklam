@@ -1,4 +1,4 @@
-import { CalendarClock, ClipboardList, Hourglass, SprayCan, Wallet } from "lucide-react"
+import { BadgePercent, CalendarClock, ClipboardList, Hourglass, SprayCan, Wallet } from "lucide-react"
 
 import { StatCard } from "@/components/dashboard/stat-card"
 import { formatCurrency } from "@/lib/format"
@@ -6,11 +6,11 @@ import type { UfoStats } from "@/lib/ufo"
 
 export function UfoStatsGrid({ stats }: { stats: UfoStats }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <StatCard
         label="Toplam Ciro"
         value={formatCurrency(stats.totalRevenue)}
-        helper="Tamamlanan işler, net (komisyon düşülmüş)"
+        helper="Tamamlanan işler, toplam tutar"
         icon={Wallet}
         tone="emerald"
       />
@@ -19,6 +19,19 @@ export function UfoStatsGrid({ stats }: { stats: UfoStats }) {
         value={formatCurrency(stats.thisMonthRevenue)}
         icon={SprayCan}
         tone="blue"
+      />
+      <StatCard
+        label="Toplam Komisyon"
+        value={formatCurrency(stats.totalCommission)}
+        helper="Bizim payımız"
+        icon={BadgePercent}
+        tone="red"
+      />
+      <StatCard
+        label="Bu Ay Komisyon"
+        value={formatCurrency(stats.thisMonthCommission)}
+        icon={BadgePercent}
+        tone="red"
       />
       <StatCard
         label="Bekleyen İş"

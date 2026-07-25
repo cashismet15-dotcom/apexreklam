@@ -34,13 +34,11 @@ export const UFO_HOME_TYPES: UfoHomeType[] = ["1+1", "2+1", "3+1", "4+1", "5+1"]
 export interface UfoStats {
   totalRevenue: number
   thisMonthRevenue: number
+  totalCommission: number
+  thisMonthCommission: number
   pendingCount: number
   appointmentCount: number
   totalCount: number
-}
-
-function netAmount(job: Pick<UfoJob, "amount" | "commission_amount">): number {
-  return job.amount - job.commission_amount
 }
 
 export function computeUfoStats(jobs: UfoJob[]): UfoStats {
@@ -49,12 +47,13 @@ export function computeUfoStats(jobs: UfoJob[]): UfoStats {
 
   const realJobs = jobs.filter((j) => j.record_type === "is")
   const completed = realJobs.filter((j) => j.status === "tamamlandi")
+  const completedThisMonth = completed.filter((j) => j.job_date.startsWith(thisMonthPrefix))
 
   return {
-    totalRevenue: completed.reduce((acc, j) => acc + netAmount(j), 0),
-    thisMonthRevenue: completed
-      .filter((j) => j.job_date.startsWith(thisMonthPrefix))
-      .reduce((acc, j) => acc + netAmount(j), 0),
+    totalRevenue: completed.reduce((acc, j) => acc + j.amount, 0),
+    thisMonthRevenue: completedThisMonth.reduce((acc, j) => acc + j.amount, 0),
+    totalCommission: completed.reduce((acc, j) => acc + j.commission_amount, 0),
+    thisMonthCommission: completedThisMonth.reduce((acc, j) => acc + j.commission_amount, 0),
     pendingCount: realJobs.filter((j) => j.status === "bekliyor").length,
     appointmentCount: jobs.filter((j) => j.record_type === "randevu").length,
     totalCount: realJobs.length,
