@@ -1,8 +1,20 @@
-import type { UfoCleaningType, UfoHomeType, UfoJob, UfoJobCategory, UfoJobStatus } from "@/lib/types"
+import type {
+  UfoCleaningType,
+  UfoHomeType,
+  UfoJob,
+  UfoJobCategory,
+  UfoJobStatus,
+  UfoRecordType,
+} from "@/lib/types"
 
 export const UFO_CATEGORY_LABELS: Record<UfoJobCategory, string> = {
   ev_temizligi: "Ev Temizliği",
   koltuk_yikama: "Koltuk Yıkama",
+}
+
+export const UFO_RECORD_TYPE_LABELS: Record<UfoRecordType, string> = {
+  randevu: "Randevu",
+  is: "İş",
 }
 
 export const UFO_CLEANING_TYPE_LABELS: Record<UfoCleaningType, string> = {
@@ -23,22 +35,29 @@ export interface UfoStats {
   totalRevenue: number
   thisMonthRevenue: number
   pendingCount: number
+  appointmentCount: number
   totalCount: number
+}
+
+function netAmount(job: Pick<UfoJob, "amount" | "commission_amount">): number {
+  return job.amount - job.commission_amount
 }
 
 export function computeUfoStats(jobs: UfoJob[]): UfoStats {
   const now = new Date()
   const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
-  const completed = jobs.filter((j) => j.status === "tamamlandi")
+  const realJobs = jobs.filter((j) => j.record_type === "is")
+  const completed = realJobs.filter((j) => j.status === "tamamlandi")
 
   return {
-    totalRevenue: completed.reduce((acc, j) => acc + j.amount, 0),
+    totalRevenue: completed.reduce((acc, j) => acc + netAmount(j), 0),
     thisMonthRevenue: completed
       .filter((j) => j.job_date.startsWith(thisMonthPrefix))
-      .reduce((acc, j) => acc + j.amount, 0),
-    pendingCount: jobs.filter((j) => j.status === "bekliyor").length,
-    totalCount: jobs.length,
+      .reduce((acc, j) => acc + netAmount(j), 0),
+    pendingCount: realJobs.filter((j) => j.status === "bekliyor").length,
+    appointmentCount: jobs.filter((j) => j.record_type === "randevu").length,
+    totalCount: realJobs.length,
   }
 }
 

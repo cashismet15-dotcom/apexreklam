@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { NewUfoAppointmentButton } from "@/components/ufo/new-ufo-appointment-button"
 import { NewUfoJobButton } from "@/components/ufo/new-ufo-job-button"
 import { UfoJobRowActions } from "@/components/ufo/ufo-job-row-actions"
 import { UfoStatsGrid } from "@/components/ufo/ufo-stats-grid"
@@ -43,7 +44,12 @@ export default async function UfoTemizlikPage() {
       <PageHeader
         title="Ufo Temizlik"
         description="Ev temizliği ve koltuk yıkama iş & ciro takibi — Apex muhasebesinden bağımsız."
-        actions={<NewUfoJobButton />}
+        actions={
+          <div className="flex items-center gap-2">
+            <NewUfoAppointmentButton />
+            <NewUfoJobButton />
+          </div>
+        }
       />
 
       <UfoStatsGrid stats={stats} />
@@ -92,11 +98,25 @@ export default async function UfoTemizlikPage() {
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium tabular-nums text-emerald-600">
                       {formatCurrency(job.amount)}
+                      {job.commission_amount > 0 ? (
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          Komisyon: {formatCurrency(job.commission_amount)}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`font-normal ${STATUS_BADGE_CLASS[job.status]}`}>
-                        {UFO_STATUS_LABELS[job.status]}
-                      </Badge>
+                      {job.record_type === "randevu" ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-indigo-50 text-indigo-700 border-indigo-200 font-normal"
+                        >
+                          Randevu
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className={`font-normal ${STATUS_BADGE_CLASS[job.status]}`}>
+                          {UFO_STATUS_LABELS[job.status]}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <UfoJobRowActions job={job} />

@@ -81,9 +81,11 @@ export type UfoJobCategory = "ev_temizligi" | "koltuk_yikama"
 export type UfoCleaningType = "dolu_ev" | "kiraci_sonrasi" | "insaat_sonrasi"
 export type UfoHomeType = "1+1" | "2+1" | "3+1" | "4+1" | "5+1"
 export type UfoJobStatus = "bekliyor" | "tamamlandi" | "iptal"
+export type UfoRecordType = "randevu" | "is"
 
 export interface UfoJob {
   id: string
+  record_type: UfoRecordType
   category: UfoJobCategory
   cleaning_type: UfoCleaningType | null
   home_type: UfoHomeType | null
@@ -91,6 +93,7 @@ export interface UfoJob {
   customer_name: string | null
   customer_phone: string | null
   amount: number
+  commission_amount: number
   job_date: string
   status: UfoJobStatus
   note: string | null

@@ -127,6 +127,7 @@ create policy "anon full access to client-logos"
 -- ---------------------------------------------------------------------------
 create table public.ufo_jobs (
   id uuid primary key default gen_random_uuid(),
+  record_type text not null default 'is' check (record_type in ('randevu', 'is')),
   category text not null check (category in ('ev_temizligi', 'koltuk_yikama')),
   cleaning_type text check (cleaning_type in ('dolu_ev', 'kiraci_sonrasi', 'insaat_sonrasi')),
   home_type text check (home_type in ('1+1', '2+1', '3+1', '4+1', '5+1')),
@@ -134,6 +135,7 @@ create table public.ufo_jobs (
   customer_name text,
   customer_phone text,
   amount numeric not null default 0,
+  commission_amount numeric not null default 0,
   job_date date not null default current_date,
   status text not null default 'bekliyor' check (status in ('bekliyor', 'tamamlandi', 'iptal')),
   note text,
@@ -142,6 +144,7 @@ create table public.ufo_jobs (
 
 create index ufo_jobs_job_date_idx on public.ufo_jobs (job_date desc);
 create index ufo_jobs_status_idx on public.ufo_jobs (status);
+create index ufo_jobs_record_type_idx on public.ufo_jobs (record_type);
 
 alter table public.ufo_jobs enable row level security;
 

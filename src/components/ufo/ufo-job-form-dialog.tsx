@@ -29,19 +29,28 @@ import {
   UFO_HOME_TYPES,
   UFO_STATUS_LABELS,
 } from "@/lib/ufo"
-import type { UfoJob, UfoJobCategory } from "@/lib/types"
+import type { UfoJob, UfoJobCategory, UfoRecordType } from "@/lib/types"
 
 interface UfoJobFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   job?: UfoJob
+  /** Yeni kayıt oluştururken kullanılır; düzenlemede job.record_type esas alınır. */
+  defaultRecordType?: UfoRecordType
 }
 
-export function UfoJobFormDialog({ open, onOpenChange, job }: UfoJobFormDialogProps) {
+export function UfoJobFormDialog({
+  open,
+  onOpenChange,
+  job,
+  defaultRecordType = "is",
+}: UfoJobFormDialogProps) {
   const now = new Date()
   const action = job ? updateUfoJob.bind(null, job.id) : createUfoJob
   const [state, formAction, isPending] = useActionState(action, initialActionState)
   const [category, setCategory] = useState<UfoJobCategory>(job?.category ?? "ev_temizligi")
+  const recordType = job?.record_type ?? defaultRecordType
+  const isAppointment = recordType === "randevu"
 
   useEffect(() => {
     if (state.status === "success") {
@@ -56,9 +65,18 @@ export function UfoJobFormDialog({ open, onOpenChange, job }: UfoJobFormDialogPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent key={open ? (job?.id ?? "new") : "closed"}>
         <DialogHeader>
-          <DialogTitle>{job ? "İşi Düzenle" : "İş Ekle"}</DialogTitle>
+          <DialogTitle>
+            {job
+              ? isAppointment
+                ? "Randevuyu Düzenle"
+                : "İşi Düzenle"
+              : isAppointment
+                ? "Randevu Ekle"
+                : "İş Ekle"}
+          </DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-3">
+          <input type="hidden" name="record_type" value={recordType} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="category">Kategori</Label>
             <Select
@@ -159,34 +177,49 @@ export function UfoJobFormDialog({ open, onOpenChange, job }: UfoJobFormDialogPr
               <FieldError errors={state.fieldErrors?.amount} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="job_date">Tarih</Label>
+              <Label htmlFor="commission_amount">Komisyon Tutarı (₺)</Label>
               <Input
-                id="job_date"
-                name="job_date"
-                type="date"
-                defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
-                required
+                id="commission_amount"
+                name="commission_amount"
+                type="number"
+                min={0}
+                step="0.01"
+                defaultValue={job ? String(job.commission_amount) : ""}
               />
-              <FieldError errors={state.fieldErrors?.job_date} />
+              <FieldError errors={state.fieldErrors?.commission_amount} />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">Durum</Label>
-            <Select name="status" defaultValue={job?.status ?? "bekliyor"}>
-              <SelectTrigger id="status" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(UFO_STATUS_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldError errors={state.fieldErrors?.status} />
+            <Label htmlFor="job_date">Tarih</Label>
+            <Input
+              id="job_date"
+              name="job_date"
+              type="date"
+              defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
+              required
+            />
+            <FieldError errors={state.fieldErrors?.job_date} />
           </div>
+
+          {isAppointment ? null : (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="status">Durum</Label>
+              <Select name="status" defaultValue={job?.status ?? "bekliyor"}>
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(UFO_STATUS_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={state.fieldErrors?.status} />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="note">Not</Label>

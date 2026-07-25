@@ -8,6 +8,7 @@ import type { ActionState } from "@/lib/actions/shared"
 
 const ufoJobSchema = z
   .object({
+    record_type: z.enum(["randevu", "is"]),
     category: z.enum(["ev_temizligi", "koltuk_yikama"]),
     cleaning_type: z.enum(["dolu_ev", "kiraci_sonrasi", "insaat_sonrasi"]).optional(),
     home_type: z.enum(["1+1", "2+1", "3+1", "4+1", "5+1"]).optional(),
@@ -15,6 +16,7 @@ const ufoJobSchema = z
     customer_name: z.string().trim().max(200).optional().or(z.literal("")),
     customer_phone: z.string().trim().max(50).optional().or(z.literal("")),
     amount: z.coerce.number().min(0, "0 veya üzeri olmalı"),
+    commission_amount: z.coerce.number().min(0, "0 veya üzeri olmalı").optional(),
     job_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin"),
     status: z.enum(["bekliyor", "tamamlandi", "iptal"]),
     note: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -29,7 +31,9 @@ const ufoJobSchema = z
   })
 
 function parseUfoJobForm(formData: FormData) {
+  const recordType = formData.get("record_type")
   return ufoJobSchema.safeParse({
+    record_type: recordType,
     category: formData.get("category"),
     cleaning_type: formData.get("cleaning_type") || undefined,
     home_type: formData.get("home_type") || undefined,
@@ -37,8 +41,9 @@ function parseUfoJobForm(formData: FormData) {
     customer_name: formData.get("customer_name"),
     customer_phone: formData.get("customer_phone"),
     amount: formData.get("amount"),
+    commission_amount: formData.get("commission_amount") || 0,
     job_date: formData.get("job_date"),
-    status: formData.get("status"),
+    status: recordType === "randevu" ? "bekliyor" : formData.get("status"),
     note: formData.get("note"),
   })
 }
@@ -50,6 +55,7 @@ function revalidateUfoPages() {
 function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
   const isEvTemizligi = data.category === "ev_temizligi"
   return {
+    record_type: data.record_type,
     category: data.category,
     cleaning_type: isEvTemizligi ? data.cleaning_type : null,
     home_type: isEvTemizligi ? data.home_type : null,
@@ -57,6 +63,7 @@ function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
     customer_name: data.customer_name || null,
     customer_phone: data.customer_phone || null,
     amount: data.amount,
+    commission_amount: data.commission_amount ?? 0,
     job_date: data.job_date,
     status: data.status,
     note: data.note || null,
@@ -121,4 +128,14 @@ export async function deleteUfoJob(id: string): Promise<ActionState> {
 
   revalidateUfoPages()
   return { status: "success", message: "İş silindi." }
+}
+
+export async function convertUfoAppointmentToJob(id: string): Promise<ActionState> {
+  const { error } = await supabase.from("ufo_jobs").update({ record_type: "is" }).eq("id", id)
+  if (error) {
+    return { status: "error", message: `İşe çevrilemedi: ${error.message}` }
+  }
+
+  revalidateUfoPages()
+  return { status: "success", message: "İşe çevrildi." }
 }
