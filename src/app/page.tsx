@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Clapperboard, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
 
+import { LogoutButton } from "@/components/auth/logout-button"
+
 const apps = [
   {
     title: "Muhasebe",
@@ -36,7 +38,8 @@ const apps = [
 
 export default function AnaSayfa() {
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
+    <div className="relative flex min-h-full flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
+      <LogoutButton className="absolute top-4 right-4" />
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground text-lg font-semibold">
           A

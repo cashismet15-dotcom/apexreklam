@@ -12,10 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { LogoutButton } from "@/components/auth/logout-button"
 import { NewUfoAppointmentButton } from "@/components/ufo/new-ufo-appointment-button"
 import { NewUfoJobButton } from "@/components/ufo/new-ufo-job-button"
 import { UfoJobRowActions } from "@/components/ufo/ufo-job-row-actions"
 import { UfoStatsGrid } from "@/components/ufo/ufo-stats-grid"
+import { getSessionRole } from "@/lib/auth-role"
 import { getUfoJobs } from "@/lib/ufo-data"
 import { UFO_STATUS_LABELS, computeUfoStats, ufoJobTypeLabel } from "@/lib/ufo"
 import { formatCurrency, formatDate } from "@/lib/format"
@@ -28,18 +30,25 @@ const STATUS_BADGE_CLASS: Record<UfoJobStatus, string> = {
 }
 
 export default async function UfoTemizlikPage() {
-  const jobs = await getUfoJobs()
+  const [jobs, role] = await Promise.all([getUfoJobs(), getSessionRole()])
   const stats = computeUfoStats(jobs)
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <Link
-        href="/"
-        className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-3.5" />
-        Ana Sayfa
-      </Link>
+      <div className="flex items-center justify-between">
+        {role === "owner" ? (
+          <Link
+            href="/"
+            className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            Ana Sayfa
+          </Link>
+        ) : (
+          <span />
+        )}
+        <LogoutButton />
+      </div>
 
       <PageHeader
         title="Ufo Temizlik"
