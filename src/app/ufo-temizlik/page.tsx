@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, CalendarDays } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -20,7 +21,7 @@ import { UfoStatsGrid } from "@/components/ufo/ufo-stats-grid"
 import { getSessionRole } from "@/lib/auth-role"
 import { getUfoJobs } from "@/lib/ufo-data"
 import { UFO_STATUS_LABELS, computeUfoStats, ufoJobTypeLabel } from "@/lib/ufo"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency, formatDate, formatTime } from "@/lib/format"
 import type { UfoJobStatus } from "@/lib/types"
 
 const STATUS_BADGE_CLASS: Record<UfoJobStatus, string> = {
@@ -55,6 +56,12 @@ export default async function UfoTemizlikPage() {
         description="Ev temizliği ve koltuk yıkama iş & ciro takibi — Apex muhasebesinden bağımsız."
         actions={
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/ufo-temizlik/takvim">
+                <CalendarDays />
+                Takvim
+              </Link>
+            </Button>
             <NewUfoAppointmentButton />
             <NewUfoJobButton />
           </div>
@@ -91,8 +98,15 @@ export default async function UfoTemizlikPage() {
                   <TableRow key={job.id}>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(job.job_date)}
+                      {job.job_time ? (
+                        <span className="mt-0.5 block text-xs">{formatTime(job.job_time)}</span>
+                      ) : null}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">{ufoJobTypeLabel(job)}</TableCell>
+                    <TableCell className="text-sm font-medium">
+                      <Link href={`/ufo-temizlik/${job.id}`} className="hover:underline">
+                        {ufoJobTypeLabel(job)}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {job.home_type ?? "—"}
                     </TableCell>

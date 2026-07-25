@@ -190,16 +190,28 @@ export function UfoJobFormDialog({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="job_date">Tarih</Label>
-            <Input
-              id="job_date"
-              name="job_date"
-              type="date"
-              defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
-              required
-            />
-            <FieldError errors={state.fieldErrors?.job_date} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="job_date">Tarih</Label>
+              <Input
+                id="job_date"
+                name="job_date"
+                type="date"
+                defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
+                required
+              />
+              <FieldError errors={state.fieldErrors?.job_date} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="job_time">Saat</Label>
+              <Input
+                id="job_time"
+                name="job_time"
+                type="time"
+                defaultValue={job?.job_time?.slice(0, 5) ?? ""}
+              />
+              <FieldError errors={state.fieldErrors?.job_time} />
+            </div>
           </div>
 
           {isAppointment ? null : (

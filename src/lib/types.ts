@@ -95,6 +95,7 @@ export interface UfoJob {
   amount: number
   commission_amount: number
   job_date: string
+  job_time: string | null
   status: UfoJobStatus
   note: string | null
   created_at: string

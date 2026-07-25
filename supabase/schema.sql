@@ -137,6 +137,7 @@ create table public.ufo_jobs (
   amount numeric not null default 0,
   commission_amount numeric not null default 0,
   job_date date not null default current_date,
+  job_time time,
   status text not null default 'bekliyor' check (status in ('bekliyor', 'tamamlandi', 'iptal')),
   note text,
   created_at timestamptz not null default now()

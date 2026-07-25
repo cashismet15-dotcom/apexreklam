@@ -18,6 +18,7 @@ const ufoJobSchema = z
     amount: z.coerce.number().min(0, "0 veya üzeri olmalı"),
     commission_amount: z.coerce.number().min(0, "0 veya üzeri olmalı").optional(),
     job_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin"),
+    job_time: z.string().regex(/^\d{2}:\d{2}$/, "Geçerli bir saat girin").optional().or(z.literal("")),
     status: z.enum(["bekliyor", "tamamlandi", "iptal"]),
     note: z.string().trim().max(2000).optional().or(z.literal("")),
   })
@@ -43,13 +44,16 @@ function parseUfoJobForm(formData: FormData) {
     amount: formData.get("amount"),
     commission_amount: formData.get("commission_amount") || 0,
     job_date: formData.get("job_date"),
+    job_time: formData.get("job_time") || undefined,
     status: recordType === "randevu" ? "bekliyor" : formData.get("status"),
     note: formData.get("note"),
   })
 }
 
-function revalidateUfoPages() {
+function revalidateUfoPages(id?: string) {
   revalidatePath("/ufo-temizlik")
+  revalidatePath("/ufo-temizlik/takvim")
+  if (id) revalidatePath(`/ufo-temizlik/${id}`)
 }
 
 function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
@@ -65,6 +69,7 @@ function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
     amount: data.amount,
     commission_amount: data.commission_amount ?? 0,
     job_date: data.job_date,
+    job_time: data.job_time || null,
     status: data.status,
     note: data.note || null,
   }
@@ -116,7 +121,7 @@ export async function updateUfoJob(
     return { status: "error", message: `İş güncellenemedi: ${error.message}` }
   }
 
-  revalidateUfoPages()
+  revalidateUfoPages(id)
   return { status: "success", message: "İş güncellendi." }
 }
 
@@ -126,7 +131,7 @@ export async function deleteUfoJob(id: string): Promise<ActionState> {
     return { status: "error", message: `İş silinemedi: ${error.message}` }
   }
 
-  revalidateUfoPages()
+  revalidateUfoPages(id)
   return { status: "success", message: "İş silindi." }
 }
 
@@ -136,6 +141,6 @@ export async function convertUfoAppointmentToJob(id: string): Promise<ActionStat
     return { status: "error", message: `İşe çevrilemedi: ${error.message}` }
   }
 
-  revalidateUfoPages()
+  revalidateUfoPages(id)
   return { status: "success", message: "İşe çevrildi." }
 }

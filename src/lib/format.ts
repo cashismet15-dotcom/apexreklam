@@ -85,6 +85,11 @@ export function daysBetween(fromIso: string, toIso: string): number {
   return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+/** "14:30:00" veya "14:30" gibi bir saat değerini "14:30" olarak gösterir. */
+export function formatTime(time: string): string {
+  return time.slice(0, 5)
+}
+
 export function kalanGunEtiketi(iso: string): string {
   const gun = daysUntil(iso)
   if (gun < 0) return `${Math.abs(gun)} gün gecikti`

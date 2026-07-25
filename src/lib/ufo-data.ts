@@ -17,3 +17,10 @@ export async function getUfoJobs(): Promise<UfoJob[]> {
   if (error) fail("İşler alınamadı", error)
   return data
 }
+
+export async function getUfoJobById(id: string): Promise<UfoJob | null> {
+  const { data, error } = await supabase.from("ufo_jobs").select("*").eq("id", id).maybeSingle()
+
+  if (error) fail("İş alınamadı", error)
+  return data
+}
