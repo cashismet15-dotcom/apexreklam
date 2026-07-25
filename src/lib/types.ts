@@ -76,3 +76,23 @@ export interface CrmQuickReply {
   sort_order: number
   created_at: string
 }
+
+export type UfoJobCategory = "ev_temizligi" | "koltuk_yikama"
+export type UfoCleaningType = "dolu_ev" | "kiraci_sonrasi" | "insaat_sonrasi"
+export type UfoHomeType = "1+1" | "2+1" | "3+1" | "4+1" | "5+1"
+export type UfoJobStatus = "bekliyor" | "tamamlandi" | "iptal"
+
+export interface UfoJob {
+  id: string
+  category: UfoJobCategory
+  cleaning_type: UfoCleaningType | null
+  home_type: UfoHomeType | null
+  location: string | null
+  customer_name: string | null
+  customer_phone: string | null
+  amount: number
+  job_date: string
+  status: UfoJobStatus
+  note: string | null
+  created_at: string
+}

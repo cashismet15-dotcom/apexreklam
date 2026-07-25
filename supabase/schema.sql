@@ -120,3 +120,33 @@ create policy "anon full access to client-logos"
   to anon
   using (bucket_id = 'client-logos')
   with check (bucket_id = 'client-logos');
+
+-- ---------------------------------------------------------------------------
+-- ufo_jobs — Ufo Temizlik: Apex'ten bağımsız ikinci gelir kaynağı (ev temizliği /
+-- koltuk yıkama) için iş ve ciro takibi. Bu CRM'in bir parçası değil.
+-- ---------------------------------------------------------------------------
+create table public.ufo_jobs (
+  id uuid primary key default gen_random_uuid(),
+  category text not null check (category in ('ev_temizligi', 'koltuk_yikama')),
+  cleaning_type text check (cleaning_type in ('dolu_ev', 'kiraci_sonrasi', 'insaat_sonrasi')),
+  home_type text check (home_type in ('1+1', '2+1', '3+1', '4+1', '5+1')),
+  location text,
+  customer_name text,
+  customer_phone text,
+  amount numeric not null default 0,
+  job_date date not null default current_date,
+  status text not null default 'bekliyor' check (status in ('bekliyor', 'tamamlandi', 'iptal')),
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create index ufo_jobs_job_date_idx on public.ufo_jobs (job_date desc);
+create index ufo_jobs_status_idx on public.ufo_jobs (status);
+
+alter table public.ufo_jobs enable row level security;
+
+create policy "anon full access" on public.ufo_jobs
+  for all
+  to anon
+  using (true)
+  with check (true);

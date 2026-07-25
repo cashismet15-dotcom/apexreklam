@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Clapperboard, Sparkles, Users, Wallet } from "lucide-react"
+import { Clapperboard, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
 
 const apps = [
   {
@@ -25,6 +25,12 @@ const apps = [
     description: "Modun, ilkelerin ve telkinlerin — girdikçe büyüyen ciro sayacı.",
     href: "/manifest",
     icon: Sparkles,
+  },
+  {
+    title: "Ufo Temizlik",
+    description: "Ev temizliği ve koltuk yıkama iş & ciro takibi.",
+    href: "/ufo-temizlik",
+    icon: SprayCan,
   },
 ]
 
