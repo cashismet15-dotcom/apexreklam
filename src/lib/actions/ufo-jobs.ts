@@ -17,7 +17,11 @@ const ufoJobSchema = z
     customer_phone: z.string().trim().max(50).optional().or(z.literal("")),
     amount: z.coerce.number().min(0, "0 veya üzeri olmalı"),
     commission_amount: z.coerce.number().min(0, "0 veya üzeri olmalı").optional(),
-    job_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin"),
+    job_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin")
+      .optional()
+      .or(z.literal("")),
     job_time: z.string().regex(/^\d{2}:\d{2}$/, "Geçerli bir saat girin").optional().or(z.literal("")),
     status: z.enum(["bekliyor", "tamamlandi", "iptal"]),
     note: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -43,7 +47,7 @@ function parseUfoJobForm(formData: FormData) {
     customer_phone: formData.get("customer_phone"),
     amount: formData.get("amount"),
     commission_amount: formData.get("commission_amount") || 0,
-    job_date: formData.get("job_date"),
+    job_date: formData.get("job_date") || undefined,
     job_time: formData.get("job_time") || undefined,
     status: recordType === "randevu" ? "bekliyor" : formData.get("status"),
     note: formData.get("note"),
@@ -68,7 +72,7 @@ function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
     customer_phone: data.customer_phone || null,
     amount: data.amount,
     commission_amount: data.commission_amount ?? 0,
-    job_date: data.job_date,
+    job_date: data.job_date || null,
     job_time: data.job_time || null,
     status: data.status,
     note: data.note || null,

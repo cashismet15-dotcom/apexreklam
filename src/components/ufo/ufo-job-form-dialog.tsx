@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { FieldError } from "@/components/shared/field-error"
 import { createUfoJob, updateUfoJob } from "@/lib/actions/ufo-jobs"
 import { initialActionState } from "@/lib/actions/shared"
@@ -49,6 +50,7 @@ export function UfoJobFormDialog({
   const action = job ? updateUfoJob.bind(null, job.id) : createUfoJob
   const [state, formAction, isPending] = useActionState(action, initialActionState)
   const [category, setCategory] = useState<UfoJobCategory>(job?.category ?? "ev_temizligi")
+  const [isFlexibleDate, setIsFlexibleDate] = useState(job ? job.job_date == null : false)
   const recordType = job?.record_type ?? defaultRecordType
   const isAppointment = recordType === "randevu"
 
@@ -190,29 +192,43 @@ export function UfoJobFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="job_date">Tarih</Label>
-              <Input
-                id="job_date"
-                name="job_date"
-                type="date"
-                defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
-                required
-              />
-              <FieldError errors={state.fieldErrors?.job_date} />
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor="flexible_date">Esnek Tarih</Label>
+              <span className="text-xs text-muted-foreground">Belirli bir tarih yok</span>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="job_time">Saat</Label>
-              <Input
-                id="job_time"
-                name="job_time"
-                type="time"
-                defaultValue={job?.job_time?.slice(0, 5) ?? ""}
-              />
-              <FieldError errors={state.fieldErrors?.job_time} />
-            </div>
+            <Switch
+              id="flexible_date"
+              checked={isFlexibleDate}
+              onCheckedChange={setIsFlexibleDate}
+            />
           </div>
+
+          {isFlexibleDate ? null : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="job_date">Tarih</Label>
+                <Input
+                  id="job_date"
+                  name="job_date"
+                  type="date"
+                  defaultValue={job?.job_date ?? now.toISOString().slice(0, 10)}
+                  required
+                />
+                <FieldError errors={state.fieldErrors?.job_date} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="job_time">Saat</Label>
+                <Input
+                  id="job_time"
+                  name="job_time"
+                  type="time"
+                  defaultValue={job?.job_time?.slice(0, 5) ?? ""}
+                />
+                <FieldError errors={state.fieldErrors?.job_time} />
+              </div>
+            </div>
+          )}
 
           {isAppointment ? null : (
             <div className="flex flex-col gap-1.5">

@@ -94,7 +94,7 @@ export interface UfoJob {
   customer_phone: string | null
   amount: number
   commission_amount: number
-  job_date: string
+  job_date: string | null
   job_time: string | null
   status: UfoJobStatus
   note: string | null

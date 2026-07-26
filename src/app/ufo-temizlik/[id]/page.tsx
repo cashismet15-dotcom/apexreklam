@@ -87,7 +87,10 @@ export default async function UfoJobDetailPage({
           <DetailRow label="Konum" value={job.location || "—"} />
           <DetailRow label="Müşteri" value={job.customer_name || "—"} />
           <DetailRow label="Telefon" value={job.customer_phone || "—"} />
-          <DetailRow label="Tarih" value={formatDate(job.job_date)} />
+          <DetailRow
+            label="Tarih"
+            value={job.job_date ? formatDate(job.job_date) : "Esnek Tarih"}
+          />
           {job.job_time ? <DetailRow label="Saat" value={formatTime(job.job_time)} /> : null}
           <DetailRow label="Tutar" value={formatCurrency(job.amount)} />
           {job.commission_amount > 0 ? (

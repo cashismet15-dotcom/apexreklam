@@ -47,7 +47,7 @@ export function computeUfoStats(jobs: UfoJob[]): UfoStats {
 
   const realJobs = jobs.filter((j) => j.record_type === "is")
   const completed = realJobs.filter((j) => j.status === "tamamlandi")
-  const completedThisMonth = completed.filter((j) => j.job_date.startsWith(thisMonthPrefix))
+  const completedThisMonth = completed.filter((j) => j.job_date?.startsWith(thisMonthPrefix) ?? false)
 
   return {
     totalRevenue: completed.reduce((acc, j) => acc + j.amount, 0),
@@ -67,10 +67,11 @@ export function ufoJobTypeLabel(job: Pick<UfoJob, "category" | "cleaning_type">)
   return typeLabel ? `${UFO_CATEGORY_LABELS.ev_temizligi} · ${typeLabel}` : UFO_CATEGORY_LABELS.ev_temizligi
 }
 
-/** job_date'e göre gruplar; her gün içinde saati olanlar önce, saatine göre sıralı. */
+/** job_date'e göre gruplar (tarihsiz/esnek kayıtlar hariç); her gün içinde saate göre sıralı. */
 export function groupUfoJobsByDate(jobs: UfoJob[]): Map<string, UfoJob[]> {
   const byDate = new Map<string, UfoJob[]>()
   for (const job of jobs) {
+    if (!job.job_date) continue
     const list = byDate.get(job.job_date) ?? []
     list.push(job)
     byDate.set(job.job_date, list)
@@ -79,6 +80,11 @@ export function groupUfoJobsByDate(jobs: UfoJob[]): Map<string, UfoJob[]> {
     list.sort((a, b) => (a.job_time ?? "99:99").localeCompare(b.job_time ?? "99:99"))
   }
   return byDate
+}
+
+/** Tarihi belirtilmemiş (esnek tarihli) kayıtlar. */
+export function getFlexibleDateJobs(jobs: UfoJob[]): UfoJob[] {
+  return jobs.filter((j) => !j.job_date)
 }
 
 function pad2(n: number): string {

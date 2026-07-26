@@ -97,10 +97,16 @@ export default async function UfoTemizlikPage() {
                 jobs.map((job) => (
                   <TableRow key={job.id}>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(job.job_date)}
-                      {job.job_time ? (
-                        <span className="mt-0.5 block text-xs">{formatTime(job.job_time)}</span>
-                      ) : null}
+                      {job.job_date ? (
+                        <>
+                          {formatDate(job.job_date)}
+                          {job.job_time ? (
+                            <span className="mt-0.5 block text-xs">{formatTime(job.job_time)}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="text-xs">Esnek Tarih</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm font-medium">
                       <Link href={`/ufo-temizlik/${job.id}`} className="hover:underline">

@@ -11,7 +11,7 @@ export async function getUfoJobs(): Promise<UfoJob[]> {
   const { data, error } = await supabase
     .from("ufo_jobs")
     .select("*")
-    .order("job_date", { ascending: false })
+    .order("job_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
 
   if (error) fail("İşler alınamadı", error)

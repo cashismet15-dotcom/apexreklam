@@ -136,7 +136,7 @@ create table public.ufo_jobs (
   customer_phone text,
   amount numeric not null default 0,
   commission_amount numeric not null default 0,
-  job_date date not null default current_date,
+  job_date date default current_date,
   job_time time,
   status text not null default 'bekliyor' check (status in ('bekliyor', 'tamamlandi', 'iptal')),
   note text,

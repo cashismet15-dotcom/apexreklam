@@ -6,9 +6,15 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { getUfoJobs } from "@/lib/ufo-data"
-import { UFO_STATUS_LABELS, buildMonthGrid, groupUfoJobsByDate, ufoJobTypeLabel } from "@/lib/ufo"
+import {
+  UFO_STATUS_LABELS,
+  buildMonthGrid,
+  getFlexibleDateJobs,
+  groupUfoJobsByDate,
+  ufoJobTypeLabel,
+} from "@/lib/ufo"
 import { AY_ADLARI, formatDate, formatTime } from "@/lib/format"
-import type { UfoJobStatus } from "@/lib/types"
+import type { UfoJob, UfoJobStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const WEEKDAY_LABELS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
@@ -17,6 +23,33 @@ const STATUS_BADGE_CLASS: Record<UfoJobStatus, string> = {
   bekliyor: "bg-amber-50 text-amber-700 border-amber-200",
   tamamlandi: "bg-emerald-50 text-emerald-700 border-emerald-200",
   iptal: "bg-red-50 text-red-700 border-red-200",
+}
+
+function JobListRow({ job }: { job: UfoJob }) {
+  return (
+    <Link
+      href={`/ufo-temizlik/${job.id}`}
+      className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+    >
+      <div className="flex flex-col">
+        <span className="text-sm font-medium">{ufoJobTypeLabel(job)}</span>
+        <span className="text-xs text-muted-foreground">
+          {job.job_time ? formatTime(job.job_time) : "Saat belirtilmemiş"}
+          {job.customer_name ? ` · ${job.customer_name}` : ""}
+        </span>
+      </div>
+      <Badge
+        variant="outline"
+        className={
+          job.record_type === "randevu"
+            ? "bg-indigo-50 text-indigo-700 border-indigo-200 font-normal"
+            : `font-normal ${STATUS_BADGE_CLASS[job.status]}`
+        }
+      >
+        {job.record_type === "randevu" ? "Randevu" : UFO_STATUS_LABELS[job.status]}
+      </Badge>
+    </Link>
+  )
 }
 
 function pad2(n: number): string {
@@ -41,6 +74,7 @@ export default async function UfoTakvimPage({
 
   const jobs = await getUfoJobs()
   const byDate = groupUfoJobsByDate(jobs)
+  const flexibleJobs = getFlexibleDateJobs(jobs)
   const gridDates = buildMonthGrid(year, month)
 
   const currentAy = monthParam(year, month)
@@ -136,32 +170,19 @@ export default async function UfoTakvimPage({
                 {formatDate(gun)} için kayıt yok.
               </div>
             ) : (
-              selectedJobs.map((job) => (
-                <Link
-                  key={job.id}
-                  href={`/ufo-temizlik/${job.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{ufoJobTypeLabel(job)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {job.job_time ? formatTime(job.job_time) : "Saat belirtilmemiş"}
-                      {job.customer_name ? ` · ${job.customer_name}` : ""}
-                    </span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      job.record_type === "randevu"
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-200 font-normal"
-                        : `font-normal ${STATUS_BADGE_CLASS[job.status]}`
-                    }
-                  >
-                    {job.record_type === "randevu" ? "Randevu" : UFO_STATUS_LABELS[job.status]}
-                  </Badge>
-                </Link>
-              ))
+              selectedJobs.map((job) => <JobListRow key={job.id} job={job} />)
             )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {flexibleJobs.length > 0 ? (
+        <Card className="gap-0 py-0">
+          <CardContent className="flex flex-col divide-y p-0">
+            <div className="px-4 py-3 text-sm font-semibold">Esnek Tarihli İşler</div>
+            {flexibleJobs.map((job) => (
+              <JobListRow key={job.id} job={job} />
+            ))}
           </CardContent>
         </Card>
       ) : null}
