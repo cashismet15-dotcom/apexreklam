@@ -55,8 +55,16 @@ export interface CrmContact {
   id: string
   phone: string
   name: string | null
+  city: string | null
   notes: string | null
   last_message_at: string | null
+  created_at: string
+}
+
+export interface CrmContactNote {
+  id: string
+  contact_id: string
+  body: string
   created_at: string
 }
 

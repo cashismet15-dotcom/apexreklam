@@ -13,6 +13,7 @@ import {
 import { FieldError } from "@/components/shared/field-error"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { createCrmContact } from "@/lib/actions/crm"
 import { initialActionState } from "@/lib/actions/shared"
 
@@ -47,6 +48,18 @@ export function NewContactButton() {
               <Label htmlFor="phone">Telefon (WhatsApp)</Label>
               <Input id="phone" name="phone" placeholder="905xxxxxxxxx" required />
               <FieldError errors={state.fieldErrors?.phone} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="city">Şehir</Label>
+              <Input id="city" name="city" />
+              <FieldError errors={state.fieldErrors?.city} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="note">Not</Label>
+              <Textarea id="note" name="note" rows={2} placeholder="İlk görüşme notu..." />
+              <FieldError errors={state.fieldErrors?.note} />
             </div>
 
             {state.status === "error" && !state.fieldErrors ? (

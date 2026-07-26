@@ -1,7 +1,7 @@
 import "server-only"
 
 import { supabase } from "@/lib/supabase"
-import type { CrmContact, CrmMessage, CrmQuickReply } from "@/lib/types"
+import type { CrmContact, CrmContactNote, CrmMessage, CrmQuickReply } from "@/lib/types"
 
 function fail(context: string, error: { message: string }): never {
   throw new Error(`${context}: ${error.message}`)
@@ -22,6 +22,17 @@ export async function getCrmContactById(id: string): Promise<CrmContact | null> 
   const { data, error } = await supabase.from("crm_contacts").select("*").eq("id", id).maybeSingle()
 
   if (error) fail("Kişi alınamadı", error)
+  return data
+}
+
+export async function getCrmContactNotes(contactId: string): Promise<CrmContactNote[]> {
+  const { data, error } = await supabase
+    .from("crm_contact_notes")
+    .select("*")
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false })
+
+  if (error) fail("Notlar alınamadı", error)
   return data
 }
 

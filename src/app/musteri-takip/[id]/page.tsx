@@ -8,7 +8,12 @@ import { ContactNotesForm } from "@/components/crm/contact-notes-form"
 import { MessageThread } from "@/components/crm/message-thread"
 import { QuickReplyButtons } from "@/components/crm/quick-reply-buttons"
 import { SendMessageForm } from "@/components/crm/send-message-form"
-import { getCrmContactById, getCrmMessages, getCrmQuickReplies } from "@/lib/crm-data"
+import {
+  getCrmContactById,
+  getCrmContactNotes,
+  getCrmMessages,
+  getCrmQuickReplies,
+} from "@/lib/crm-data"
 import { formatDate } from "@/lib/format"
 
 export default async function KisiDetayPage({
@@ -20,9 +25,10 @@ export default async function KisiDetayPage({
   const contact = await getCrmContactById(id)
   if (!contact) notFound()
 
-  const [messages, quickReplies] = await Promise.all([
+  const [messages, quickReplies, contactNotes] = await Promise.all([
     getCrmMessages(id),
     getCrmQuickReplies(),
+    getCrmContactNotes(id),
   ])
 
   return (
@@ -37,7 +43,7 @@ export default async function KisiDetayPage({
 
       <PageHeader
         title={contact.name || contact.phone}
-        description={`${contact.phone} · ilk kayıt ${formatDate(contact.created_at)}`}
+        description={`${contact.phone}${contact.city ? ` · ${contact.city}` : ""} · ilk kayıt ${formatDate(contact.created_at)}`}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -46,7 +52,7 @@ export default async function KisiDetayPage({
             <CardTitle className="text-base font-semibold">Not</CardTitle>
           </CardHeader>
           <CardContent>
-            <ContactNotesForm contactId={contact.id} initialNotes={contact.notes} />
+            <ContactNotesForm contactId={contact.id} notes={contactNotes} />
           </CardContent>
         </Card>
 

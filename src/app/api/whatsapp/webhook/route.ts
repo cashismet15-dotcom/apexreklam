@@ -1,60 +1,64 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { phoneFromRemoteJid } from "@/lib/evolution"
+import { verifyWebhookSignature } from "@/lib/whatsapp"
 import { supabase } from "@/lib/supabase"
 
 /**
- * Evolution API bu URL'e mesaj olaylarını POST eder. Evolution API instance
- * ayarlarında webhook adresi olarak şunu ver:
- *   https://<senin-domainin>/api/whatsapp/webhook?secret=<EVOLUTION_WEBHOOK_SECRET>
- *
- * Evolution API sürümüne göre payload şekli değişebilir — burada v2'nin yaygın
- * "messages.upsert" olay şeklini bekliyoruz. Gerçek instance'ından gelen ilk
- * webhook'u loglayıp (aşağıdaki console.log zaten var) gerekirse extractMessageText
- * ve alan adlarını (remoteJid/pushName/message) ona göre güncelle.
+ * Meta WhatsApp Cloud API webhook'u. Meta Business Suite'te bu URL'i
+ * (https://<domain>/api/whatsapp/webhook) ve WHATSAPP_VERIFY_TOKEN ile aynı
+ * doğrulama metnini webhook ayarlarına gireceksin — GET isteği o kurulum
+ * sırasında bir kez çalışır. Gelen mesaj olayları POST ile buraya düşer.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractMessageText(message: any): string | null {
-  if (!message) return null
-  if (typeof message.conversation === "string") return message.conversation
-  if (typeof message.extendedTextMessage?.text === "string") return message.extendedTextMessage.text
-  if (typeof message.imageMessage?.caption === "string") return message.imageMessage.caption
-  return null
+interface WhatsAppMessage {
+  from: string
+  id: string
+  timestamp: string
+  type: string
+  text?: { body: string }
 }
 
-export async function GET() {
-  return NextResponse.json({ ok: true, message: "WhatsApp webhook ayakta." })
+interface WhatsAppWebhookPayload {
+  entry?: {
+    changes?: {
+      value?: {
+        contacts?: { profile?: { name?: string }; wa_id: string }[]
+        messages?: WhatsAppMessage[]
+      }
+    }[]
+  }[]
+}
+
+export async function GET(request: NextRequest) {
+  const mode = request.nextUrl.searchParams.get("hub.mode")
+  const token = request.nextUrl.searchParams.get("hub.verify_token")
+  const challenge = request.nextUrl.searchParams.get("hub.challenge")
+
+  if (mode === "subscribe" && token && token === process.env.WHATSAPP_VERIFY_TOKEN && challenge) {
+    return new NextResponse(challenge, { status: 200 })
+  }
+
+  return NextResponse.json({ error: "verification failed" }, { status: 403 })
 }
 
 export async function POST(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get("secret")
-  if (!process.env.EVOLUTION_WEBHOOK_SECRET || secret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  const rawBody = await request.text()
+  const signature = request.headers.get("x-hub-signature-256")
+
+  if (!verifyWebhookSignature(rawBody, signature)) {
+    return NextResponse.json({ error: "invalid signature" }, { status: 401 })
   }
 
-  const payload = await request.json().catch(() => null)
-  if (!payload) {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 })
-  }
+  const payload = JSON.parse(rawBody) as WhatsAppWebhookPayload
 
-  console.log("[whatsapp-webhook] payload:", JSON.stringify(payload).slice(0, 2000))
-
-  const data = payload.data ?? payload
-  const remoteJid: string | undefined = data?.key?.remoteJid
-  const fromMe: boolean = Boolean(data?.key?.fromMe)
-
-  if (!remoteJid || fromMe) {
+  const value = payload.entry?.[0]?.changes?.[0]?.value
+  const message = value?.messages?.[0]
+  if (!message || message.type !== "text" || !message.text?.body) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
-  const body = extractMessageText(data.message)
-  if (!body) {
-    return NextResponse.json({ ok: true, skipped: true })
-  }
-
-  const phone = phoneFromRemoteJid(remoteJid)
-  const pushName: string | null = typeof data.pushName === "string" ? data.pushName : null
+  const phone = message.from
+  const pushName = value?.contacts?.[0]?.profile?.name ?? null
   const now = new Date().toISOString()
 
   const { data: existing } = await supabase
@@ -90,8 +94,8 @@ export async function POST(request: NextRequest) {
   await supabase.from("crm_messages").insert({
     contact_id: contactId,
     direction: "gelen",
-    body,
-    whatsapp_message_id: data.key?.id ?? null,
+    body: message.text.body,
+    whatsapp_message_id: message.id,
   })
 
   return NextResponse.json({ ok: true })

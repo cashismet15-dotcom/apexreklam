@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
-import { normalizePhone, sendWhatsAppMessage } from "@/lib/evolution"
+import { normalizePhone, sendWhatsAppMessage } from "@/lib/whatsapp"
 import { supabase } from "@/lib/supabase"
 import type { ActionState } from "@/lib/actions/shared"
 
@@ -16,6 +16,8 @@ function revalidateCrmPages() {
 const contactSchema = z.object({
   name: z.string().trim().min(1, "İsim zorunlu").max(200),
   phone: z.string().trim().min(5, "Geçerli bir telefon girin").max(30),
+  city: z.string().trim().max(200).optional().or(z.literal("")),
+  note: z.string().trim().max(5000).optional().or(z.literal("")),
 })
 
 /** Manuel kişi ekleme — WhatsApp entegrasyonu bağlanana kadar CRM'i test edebilmek için. */
@@ -26,6 +28,8 @@ export async function createCrmContact(
   const parsed = contactSchema.safeParse({
     name: formData.get("name"),
     phone: formData.get("phone"),
+    city: formData.get("city"),
+    note: formData.get("note"),
   })
 
   if (!parsed.success) {
@@ -36,30 +40,41 @@ export async function createCrmContact(
     }
   }
 
-  const { error } = await supabase.from("crm_contacts").insert({
-    name: parsed.data.name,
-    phone: normalizePhone(parsed.data.phone),
-  })
+  const { data: contact, error } = await supabase
+    .from("crm_contacts")
+    .insert({
+      name: parsed.data.name,
+      phone: normalizePhone(parsed.data.phone),
+      city: parsed.data.city || null,
+    })
+    .select("id")
+    .single()
 
   if (error) {
     const message = error.code === "23505" ? "Bu telefon numarası zaten kayıtlı." : error.message
     return { status: "error", message: `Kişi eklenemedi: ${message}` }
   }
 
+  if (parsed.data.note) {
+    await supabase
+      .from("crm_contact_notes")
+      .insert({ contact_id: contact.id, body: parsed.data.note })
+  }
+
   revalidateCrmPages()
   return { status: "success", message: "Kişi eklendi." }
 }
 
-const notesSchema = z.object({
-  notes: z.string().trim().max(5000).optional().or(z.literal("")),
+const addNoteSchema = z.object({
+  body: z.string().trim().min(1, "Not boş olamaz").max(5000),
 })
 
-export async function updateContactNotes(
+export async function addContactNote(
   contactId: string,
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const parsed = notesSchema.safeParse({ notes: formData.get("notes") })
+  const parsed = addNoteSchema.safeParse({ body: formData.get("body") })
   if (!parsed.success) {
     return {
       status: "error",
@@ -69,16 +84,15 @@ export async function updateContactNotes(
   }
 
   const { error } = await supabase
-    .from("crm_contacts")
-    .update({ notes: parsed.data.notes || null })
-    .eq("id", contactId)
+    .from("crm_contact_notes")
+    .insert({ contact_id: contactId, body: parsed.data.body })
 
   if (error) {
     return { status: "error", message: `Not kaydedilemedi: ${error.message}` }
   }
 
   revalidateCrmPages()
-  return { status: "success", message: "Not kaydedildi." }
+  return { status: "success", message: "Not eklendi." }
 }
 
 async function logOutgoingMessage(contactId: string, phone: string, body: string): Promise<ActionState> {

@@ -13,6 +13,7 @@ create table public.crm_contacts (
   id uuid primary key default gen_random_uuid(),
   phone text not null unique,
   name text,
+  city text,
   notes text,
   last_message_at timestamptz,
   created_at timestamptz not null default now()
@@ -23,6 +24,27 @@ create index crm_contacts_last_message_at_idx on public.crm_contacts (last_messa
 alter table public.crm_contacts enable row level security;
 
 create policy "anon full access" on public.crm_contacts
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+-- ---------------------------------------------------------------------------
+-- crm_contact_notes — bir kişiyle yapılan görüşmelerden sonra alınan, üst üste
+-- birikebilen takip notları (2. 3. görüşme notu gibi).
+-- ---------------------------------------------------------------------------
+create table public.crm_contact_notes (
+  id uuid primary key default gen_random_uuid(),
+  contact_id uuid not null references public.crm_contacts (id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index crm_contact_notes_contact_id_idx on public.crm_contact_notes (contact_id, created_at);
+
+alter table public.crm_contact_notes enable row level security;
+
+create policy "anon full access" on public.crm_contact_notes
   for all
   to anon
   using (true)
