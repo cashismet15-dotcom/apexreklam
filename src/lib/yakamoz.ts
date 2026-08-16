@@ -1,4 +1,10 @@
-import type { YakamozCustomerSummary, YakamozJob, YakamozJobStatus } from "@/lib/types"
+import type {
+  YakamozContact,
+  YakamozCustomerSummary,
+  YakamozJob,
+  YakamozJobStatus,
+  YakamozRecipient,
+} from "@/lib/types"
 
 export const YAKAMOZ_STATUS_LABELS: Record<YakamozJobStatus, string> = {
   siparis_alindi: "Sipariş Alındı",
@@ -77,4 +83,51 @@ export function getYakamozCustomerSummaries(jobs: YakamozJob[]): YakamozCustomer
     if (a.needsReminder !== b.needsReminder) return a.needsReminder ? -1 : 1
     return (b.lastServiceDate ?? "").localeCompare(a.lastServiceDate ?? "")
   })
+}
+
+/** yakamoz_contacts ve yakamoz_jobs'taki tüm telefonların birleşimi, tekilleştirilmiş — toplu gönderim alıcı havuzu. */
+export function getYakamozAllRecipients(
+  jobs: YakamozJob[],
+  contacts: YakamozContact[]
+): YakamozRecipient[] {
+  const byLast10 = new Map<string, YakamozRecipient>()
+
+  for (const job of jobs) {
+    const key = phoneLast10(job.phone)
+    if (!key) continue
+    const existing = byLast10.get(key)
+    if (!existing) {
+      byLast10.set(key, { phone: job.phone, name: job.customer_name })
+    } else if (!existing.name && job.customer_name) {
+      existing.name = job.customer_name
+    }
+  }
+
+  for (const contact of contacts) {
+    const key = phoneLast10(contact.phone)
+    if (!key) continue
+    const existing = byLast10.get(key)
+    if (!existing) {
+      byLast10.set(key, { phone: contact.phone, name: contact.name })
+    } else if (!existing.name && contact.name) {
+      existing.name = contact.name
+    }
+  }
+
+  return [...byLast10.values()]
+}
+
+/** "{{ad}}" yer tutucusunu isimle değiştirir; isim yoksa yer tutucuyu ve öncesindeki fazla boşluğu temizler. */
+export function resolveYakamozTemplate(body: string, name: string | null): string {
+  if (name) return body.replaceAll("{{ad}}", name)
+  return body.replaceAll(" {{ad}},", ",").replaceAll("{{ad}}", "").replace(/[ \t]+/g, " ").trim()
+}
+
+/** Bir sonraki (ay, gün) tekrarına kaç gün kaldığını hesaplar; bugünse 0 döner. */
+export function daysUntilNextOccurrence(month: number, day: number): number {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const thisYear = new Date(now.getFullYear(), month - 1, day)
+  const target = thisYear >= now ? thisYear : new Date(now.getFullYear() + 1, month - 1, day)
+  return Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 }

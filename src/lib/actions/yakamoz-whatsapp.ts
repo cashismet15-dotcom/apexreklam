@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 import { supabase } from "@/lib/supabase"
-import { normalizePhone, sendWhatsAppMessage } from "@/lib/yakamoz-whatsapp"
-import { phoneLast10 } from "@/lib/yakamoz"
+import { findOrCreateYakamozContact, sendAndLogYakamozMessage } from "@/lib/yakamoz-whatsapp-data"
 import type { ActionState } from "@/lib/actions/shared"
 
 function revalidateYakamozWhatsappPages() {
@@ -15,26 +14,13 @@ function revalidateYakamozWhatsappPages() {
 }
 
 async function logOutgoingMessage(contactId: string, phone: string, body: string): Promise<ActionState> {
-  const result = await sendWhatsAppMessage(phone, body)
+  const result = await sendAndLogYakamozMessage(contactId, phone, body)
   if (!result.ok) {
     return { status: "error", message: `Mesaj gönderilemedi: ${result.error}` }
   }
 
-  const now = new Date().toISOString()
-  const { error } = await supabase.from("yakamoz_wa_messages").insert({
-    contact_id: contactId,
-    direction: "giden",
-    body,
-  })
-  if (error) {
-    return { status: "error", message: `Mesaj gönderildi ama kaydedilemedi: ${error.message}` }
-  }
-
   // Personel elle yazdığında YZ asistanı bu kişiye artık otomatik cevap vermemeli.
-  await supabase
-    .from("yakamoz_contacts")
-    .update({ last_message_at: now, ai_paused: true })
-    .eq("id", contactId)
+  await supabase.from("yakamoz_contacts").update({ ai_paused: true }).eq("id", contactId)
 
   revalidateYakamozWhatsappPages()
   return { status: "success", message: "Mesaj gönderildi." }
@@ -95,27 +81,10 @@ export async function sendYakamozReminder(
     }
   }
 
-  const { data: contacts } = await supabase
-    .from("yakamoz_contacts")
-    .select("id, phone")
-
-  const target = contacts?.find((c) => phoneLast10(c.phone) === phoneLast10(phone))
-
-  let contactId: string
-  if (target) {
-    contactId = target.id
-  } else {
-    const { data: created, error } = await supabase
-      .from("yakamoz_contacts")
-      .insert({ phone: normalizePhone(phone), name: customerName })
-      .select("id")
-      .single()
-
-    if (error || !created) {
-      return { status: "error", message: `Kişi oluşturulamadı: ${error?.message}` }
-    }
-    contactId = created.id
+  const result = await findOrCreateYakamozContact(phone, customerName)
+  if ("error" in result) {
+    return { status: "error", message: `Kişi oluşturulamadı: ${result.error}` }
   }
 
-  return logOutgoingMessage(contactId, phone, parsed.data.body)
+  return logOutgoingMessage(result.id, phone, parsed.data.body)
 }

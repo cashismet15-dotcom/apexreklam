@@ -232,3 +232,36 @@ export interface YakamozCustomerSummary {
   totalJobs: number
   needsReminder: boolean
 }
+
+export interface YakamozTemplate {
+  id: string
+  title: string
+  body: string
+  created_at: string
+}
+
+export interface YakamozSpecialDay {
+  id: string
+  title: string
+  month: number
+  day: number
+  template_id: string | null
+  body: string | null
+  last_sent_year: number | null
+  created_at: string
+}
+
+export interface YakamozBroadcast {
+  id: string
+  title: string | null
+  body: string
+  recipient_count: number
+  success_count: number
+  failed_count: number
+  created_at: string
+}
+
+export interface YakamozRecipient {
+  phone: string
+  name: string | null
+}
