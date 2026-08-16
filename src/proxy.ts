@@ -5,16 +5,24 @@ import { SESSION_COOKIE, verifySessionValue } from "@/lib/session"
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const role = verifySessionValue(request.cookies.get(SESSION_COOKIE)?.value)
+  const session = verifySessionValue(request.cookies.get(SESSION_COOKIE)?.value)
 
-  if (!role) {
+  if (!session) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("next", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (role === "ufo" && !pathname.startsWith("/ufo-temizlik")) {
+  if (session.role === "ufo" && !pathname.startsWith("/ufo-temizlik")) {
     return NextResponse.redirect(new URL("/ufo-temizlik", request.url))
+  }
+
+  if (session.role === "yakamoz" && !pathname.startsWith("/yakamoz")) {
+    return NextResponse.redirect(new URL("/yakamoz", request.url))
+  }
+
+  if (session.role === "partner" && !pathname.startsWith("/taseron")) {
+    return NextResponse.redirect(new URL("/taseron", request.url))
   }
 
   return NextResponse.next()

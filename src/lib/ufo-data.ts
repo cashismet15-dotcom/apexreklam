@@ -10,7 +10,7 @@ function fail(context: string, error: { message: string }): never {
 export async function getUfoJobs(): Promise<UfoJob[]> {
   const { data, error } = await supabase
     .from("ufo_jobs")
-    .select("*")
+    .select("*, taken_by_partner:partner_companies(name)")
     .order("job_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
 

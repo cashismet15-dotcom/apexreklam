@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Clapperboard, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
+import { Clapperboard, Droplets, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
 
 import { LogoutButton } from "@/components/auth/logout-button"
 
@@ -33,6 +33,12 @@ const apps = [
     description: "Ev temizliği ve koltuk yıkama iş & ciro takibi.",
     href: "/ufo-temizlik",
     icon: SprayCan,
+  },
+  {
+    title: "Yakamoz Halı Yıkama",
+    description: "Müşteri, randevu ve kurye/servis takibi.",
+    href: "/yakamoz",
+    icon: Droplets,
   },
 ]
 

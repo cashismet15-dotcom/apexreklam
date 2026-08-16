@@ -122,6 +122,48 @@ create policy "anon full access to client-logos"
   with check (bucket_id = 'client-logos');
 
 -- ---------------------------------------------------------------------------
+-- daily_habits / daily_habit_logs — Günlük Takip: müşteri/CRM'den bağımsız,
+-- kişisel günlük görev (spor, diyet vb.) takibi ve haftalık rapor.
+-- ---------------------------------------------------------------------------
+create table public.daily_habits (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index daily_habits_active_idx on public.daily_habits (active, sort_order);
+
+alter table public.daily_habits enable row level security;
+
+create policy "anon full access" on public.daily_habits
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+create table public.daily_habit_logs (
+  id uuid primary key default gen_random_uuid(),
+  habit_id uuid not null references public.daily_habits (id) on delete cascade,
+  log_date date not null,
+  done boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (habit_id, log_date)
+);
+
+create index daily_habit_logs_habit_id_idx on public.daily_habit_logs (habit_id);
+create index daily_habit_logs_log_date_idx on public.daily_habit_logs (log_date);
+
+alter table public.daily_habit_logs enable row level security;
+
+create policy "anon full access" on public.daily_habit_logs
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+-- ---------------------------------------------------------------------------
 -- ufo_jobs — Ufo Temizlik: Apex'ten bağımsız ikinci gelir kaynağı (ev temizliği /
 -- koltuk yıkama) için iş ve ciro takibi. Bu CRM'in bir parçası değil.
 -- ---------------------------------------------------------------------------
@@ -140,6 +182,8 @@ create table public.ufo_jobs (
   job_time time,
   status text not null default 'bekliyor' check (status in ('bekliyor', 'tamamlandi', 'iptal')),
   note text,
+  open_to_partners boolean not null default false,
+  partner_taken_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -154,3 +198,133 @@ create policy "anon full access" on public.ufo_jobs
   to anon
   using (true)
   with check (true);
+
+-- ---------------------------------------------------------------------------
+-- partner_companies — Ufo Temizlik'in iş verdiği taşeron (alt) firmalar. Her
+-- firmanın kendi giriş hesabı olur; sadece open_to_partners=true işaretli
+-- ufo_jobs kayıtlarını (havuz) görebilirler.
+-- ---------------------------------------------------------------------------
+create table public.partner_companies (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  username text not null unique,
+  passcode_hash text not null,
+  active boolean not null default true,
+  tax_id text,
+  tax_office text,
+  address text,
+  contact_name text,
+  contact_phone text,
+  tax_document_url text,
+  balance numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.partner_companies enable row level security;
+
+create policy "anon full access" on public.partner_companies
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+alter table public.ufo_jobs add column taken_by_partner_id uuid references public.partner_companies(id) on delete set null;
+alter table public.ufo_jobs add column partner_rating smallint check (partner_rating between 1 and 10);
+alter table public.ufo_jobs add column partner_terms_version text;
+
+-- Vergi levhası yüklemeleri için Storage bucket'ı.
+insert into storage.buckets (id, name, public)
+values ('partner-documents', 'partner-documents', true)
+on conflict (id) do nothing;
+
+create policy "anon full access to partner-documents"
+  on storage.objects
+  for all
+  to anon
+  using (bucket_id = 'partner-documents')
+  with check (bucket_id = 'partner-documents');
+
+-- ---------------------------------------------------------------------------
+-- partner_transactions — taşeron cüzdan hareketleri (bakiye yükleme, komisyon
+-- kesintisi, owner düzeltmesi).
+-- ---------------------------------------------------------------------------
+create table public.partner_transactions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.partner_companies(id) on delete cascade,
+  type text not null check (type in ('topup', 'commission', 'adjustment')),
+  amount numeric not null,
+  job_id uuid references public.ufo_jobs(id) on delete set null,
+  status text not null default 'completed' check (status in ('pending', 'completed', 'failed')),
+  iyzico_token text,
+  iyzico_payment_id text,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create index partner_transactions_company_id_idx on public.partner_transactions (company_id);
+
+alter table public.partner_transactions enable row level security;
+
+create policy "anon full access" on public.partner_transactions
+  for all
+  to anon
+  using (true)
+  with check (true);
+
+create or replace function public.take_partner_job(p_job_id uuid, p_company_id uuid, p_terms_version text)
+returns table(ok boolean, message text) language plpgsql as $$
+declare
+  v_taken uuid;
+  v_commission numeric;
+  v_balance numeric;
+begin
+  select taken_by_partner_id, commission_amount into v_taken, v_commission
+    from public.ufo_jobs where id = p_job_id for update;
+
+  if v_taken is not null then
+    return query select false, 'Bu iş zaten alınmış.';
+    return;
+  end if;
+
+  select balance into v_balance from public.partner_companies where id = p_company_id for update;
+
+  if v_balance < v_commission then
+    return query select false, format('Bakiyeniz yetersiz. Gereken komisyon: %s TL, bakiyeniz: %s TL.', v_commission, v_balance);
+    return;
+  end if;
+
+  update public.ufo_jobs
+    set taken_by_partner_id = p_company_id,
+        partner_taken_at = now(),
+        partner_terms_version = p_terms_version
+    where id = p_job_id;
+
+  update public.partner_companies set balance = balance - v_commission where id = p_company_id;
+
+  insert into public.partner_transactions (company_id, type, amount, job_id, note)
+    values (p_company_id, 'commission', -v_commission, p_job_id, 'İş komisyonu');
+
+  return query select true, 'İşi aldınız.';
+end;
+$$;
+
+create or replace function public.complete_partner_topup(p_transaction_id uuid)
+returns table(ok boolean, company_id uuid, amount numeric) language plpgsql as $$
+declare
+  v_company uuid;
+  v_amount numeric;
+begin
+  update public.partner_transactions set status = 'completed'
+    where id = p_transaction_id and status = 'pending'
+    returning company_id, amount into v_company, v_amount;
+
+  if v_company is null then
+    return query select false, null::uuid, null::numeric;
+    return;
+  end if;
+
+  update public.partner_companies set balance = balance + v_amount where id = v_company;
+
+  return query select true, v_company, v_amount;
+end;
+$$;

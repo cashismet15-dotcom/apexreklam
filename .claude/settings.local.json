@@ -58,7 +58,22 @@
       "Bash(node test-takvim.js)",
       "Bash(git config *)",
       "Bash(git remote *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(node *)",
+      "Bash(command -v vercel)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(curl -s http://localhost:3000/icerik-takip -o /tmp/icerik.html -w \"%{http_code}\\\\n\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3000/icerik-takip -o /tmp/icerik2.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3000/icerik-takip/23c012de-1eaf-4051-a855-070aa89e92a0 -o /tmp/icerik_dila.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3000/ -o /tmp/home.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3000/manifest -o /tmp/manifest.html -w \"%{http_code}\\\\n\")",
+      "Bash(npx vercel *)",
+      "Bash(curl -v \"https://apexreklam.vercel.app/api/whatsapp/webhook\")"
     ]
   }
 }

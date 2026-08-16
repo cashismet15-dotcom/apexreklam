@@ -85,6 +85,22 @@ export interface CrmQuickReply {
   created_at: string
 }
 
+export interface DailyHabit {
+  id: string
+  title: string
+  sort_order: number
+  active: boolean
+  created_at: string
+}
+
+export interface DailyHabitLog {
+  id: string
+  habit_id: string
+  log_date: string
+  done: boolean
+  created_at: string
+}
+
 export type UfoJobCategory = "ev_temizligi" | "koltuk_yikama"
 export type UfoCleaningType = "dolu_ev" | "kiraci_sonrasi" | "insaat_sonrasi"
 export type UfoHomeType = "1+1" | "2+1" | "3+1" | "4+1" | "5+1"
@@ -106,5 +122,85 @@ export interface UfoJob {
   job_time: string | null
   status: UfoJobStatus
   note: string | null
+  open_to_partners: boolean
+  taken_by_partner_id: string | null
+  partner_taken_at: string | null
+  partner_rating: number | null
+  partner_terms_version: string | null
   created_at: string
+  /** Sadece owner/ufo tarafındaki join'li sorgularda dolu gelir. */
+  taken_by_partner?: { name: string } | null
+}
+
+export interface PartnerCompany {
+  id: string
+  name: string
+  username: string
+  active: boolean
+  tax_id: string | null
+  tax_office: string | null
+  address: string | null
+  contact_name: string | null
+  contact_phone: string | null
+  tax_document_url: string | null
+  balance: number
+  created_at: string
+  /** Sadece getPartnerCompanies() (admin listesi) tarafından hesaplanır. */
+  avg_rating?: number | null
+  rating_count?: number
+}
+
+export type PartnerTransactionType = "topup" | "commission" | "adjustment"
+export type PartnerTransactionStatus = "pending" | "completed" | "failed"
+
+export interface PartnerTransaction {
+  id: string
+  company_id: string
+  type: PartnerTransactionType
+  amount: number
+  job_id: string | null
+  status: PartnerTransactionStatus
+  note: string | null
+  created_at: string
+}
+
+/** Taşeron havuzunda gösterilecek iş — hassas alanlar (müşteri, komisyon) hiç yok. */
+export interface PartnerJob {
+  id: string
+  category: UfoJobCategory
+  cleaning_type: UfoCleaningType | null
+  home_type: UfoHomeType | null
+  location: string | null
+  job_date: string | null
+  job_time: string | null
+  amount: number
+  taken_by_partner_id: string | null
+}
+
+export type YakamozJobStatus = "siparis_alindi" | "yikamada" | "bitti" | "yolda"
+
+export interface YakamozJob {
+  id: string
+  customer_name: string | null
+  phone: string
+  address_text: string | null
+  lat: number | null
+  lng: number | null
+  il: string
+  ilce: string
+  mahalle: string | null
+  price_per_m2: number | null
+  requested_date: string | null
+  requested_time: string | null
+  status: YakamozJobStatus
+  status_changed_at: string
+  note: string | null
+  created_at: string
+}
+
+export interface YakamozStatusLog {
+  id: string
+  job_id: string
+  status: YakamozJobStatus
+  changed_at: string
 }

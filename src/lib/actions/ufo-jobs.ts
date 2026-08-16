@@ -25,6 +25,11 @@ const ufoJobSchema = z
     job_time: z.string().regex(/^\d{2}:\d{2}$/, "Geçerli bir saat girin").optional().or(z.literal("")),
     status: z.enum(["bekliyor", "tamamlandi", "iptal"]),
     note: z.string().trim().max(2000).optional().or(z.literal("")),
+    open_to_partners: z.preprocess((v) => v === "true", z.boolean()),
+    partner_rating: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : Number(v)),
+      z.number().int().min(1, "1-10 arası olmalı").max(10, "1-10 arası olmalı").optional()
+    ),
   })
   .refine((data) => data.category !== "ev_temizligi" || !!data.cleaning_type, {
     message: "Hizmet tipi seçin",
@@ -51,6 +56,8 @@ function parseUfoJobForm(formData: FormData) {
     job_time: formData.get("job_time") || undefined,
     status: recordType === "randevu" ? "bekliyor" : formData.get("status"),
     note: formData.get("note"),
+    open_to_partners: formData.get("open_to_partners"),
+    partner_rating: formData.get("partner_rating"),
   })
 }
 
@@ -76,6 +83,8 @@ function toInsertPayload(data: z.infer<typeof ufoJobSchema>) {
     job_time: data.job_time || null,
     status: data.status,
     note: data.note || null,
+    open_to_partners: data.open_to_partners,
+    partner_rating: data.partner_rating ?? null,
   }
 }
 
@@ -116,9 +125,14 @@ export async function updateUfoJob(
     }
   }
 
+  const payload = toInsertPayload(parsed.data)
   const { error } = await supabase
     .from("ufo_jobs")
-    .update(toInsertPayload(parsed.data))
+    .update(
+      payload.open_to_partners
+        ? payload
+        : { ...payload, taken_by_partner_id: null, partner_taken_at: null }
+    )
     .eq("id", id)
 
   if (error) {

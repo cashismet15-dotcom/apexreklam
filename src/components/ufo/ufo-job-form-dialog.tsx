@@ -51,6 +51,7 @@ export function UfoJobFormDialog({
   const [state, formAction, isPending] = useActionState(action, initialActionState)
   const [category, setCategory] = useState<UfoJobCategory>(job?.category ?? "ev_temizligi")
   const [isFlexibleDate, setIsFlexibleDate] = useState(job ? job.job_date == null : false)
+  const [openToPartners, setOpenToPartners] = useState(job?.open_to_partners ?? false)
   const recordType = job?.record_type ?? defaultRecordType
   const isAppointment = recordType === "randevu"
 
@@ -229,6 +230,42 @@ export function UfoJobFormDialog({
               </div>
             </div>
           )}
+
+          {isAppointment ? null : (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="open_to_partners">Alt Firmaya Aç</Label>
+                <span className="text-xs text-muted-foreground">
+                  Taşeron firmalar bu işi havuzda görüp alabilir (telefon/ciro görmezler)
+                </span>
+              </div>
+              <input type="hidden" name="open_to_partners" value={openToPartners ? "true" : "false"} />
+              <Switch
+                id="open_to_partners"
+                checked={openToPartners}
+                onCheckedChange={setOpenToPartners}
+              />
+            </div>
+          )}
+
+          {job?.taken_by_partner_id ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="partner_rating">Taşeron Puanı (1-10)</Label>
+              <Select name="partner_rating" defaultValue={job.partner_rating?.toString() ?? undefined}>
+                <SelectTrigger id="partner_rating" className="w-full">
+                  <SelectValue placeholder="Puan verilmedi" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={n.toString()}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={state.fieldErrors?.partner_rating} />
+            </div>
+          ) : null}
 
           {isAppointment ? null : (
             <div className="flex flex-col gap-1.5">
