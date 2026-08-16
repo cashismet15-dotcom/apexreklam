@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { ArrowLeft, MapPin, MessageCircle, Users } from "lucide-react"
+import { ArrowLeft, MapPin } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { NewYakamozJobButton } from "@/components/yakamoz/new-yakamoz-job-button"
@@ -51,18 +50,6 @@ export default async function YakamozPage({
         description="Müşteri, randevu ve kurye/servis takibi."
         actions={
           <>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/yakamoz/whatsapp">
-                <MessageCircle />
-                WhatsApp
-              </Link>
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/yakamoz/musteriler">
-                <Users />
-                Müşteriler
-              </Link>
-            </Button>
             <YakamozFilterButton currentIlce={ilce} />
             <NewYakamozJobButton />
           </>

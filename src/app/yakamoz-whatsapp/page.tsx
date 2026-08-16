@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Users } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { getSessionRole } from "@/lib/auth-role"
@@ -14,19 +15,31 @@ export default async function YakamozWhatsappPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between">
-        <Link
-          href="/yakamoz"
-          className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Yakamoz
-        </Link>
-        {session?.role === "owner" ? <LogoutButton /> : <span />}
+        {session?.role === "owner" ? (
+          <Link
+            href="/"
+            className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            Ana Sayfa
+          </Link>
+        ) : (
+          <span />
+        )}
+        <LogoutButton />
       </div>
 
       <PageHeader
         title="Yakamoz WhatsApp"
         description={`${contacts.length} kişi kayıtlı`}
+        actions={
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/yakamoz-whatsapp/musteriler">
+              <Users />
+              Müşteriler
+            </Link>
+          </Button>
+        }
       />
 
       <Card className="gap-0 py-0">
@@ -39,7 +52,7 @@ export default async function YakamozWhatsappPage() {
             contacts.map((contact) => (
               <Link
                 key={contact.id}
-                href={`/yakamoz/whatsapp/${contact.id}`}
+                href={`/yakamoz-whatsapp/${contact.id}`}
                 className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50"
               >
                 <div className="flex min-w-0 flex-col">

@@ -6,18 +6,13 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { YakamozReminderButton } from "@/components/yakamoz/yakamoz-reminder-button"
-import { getSessionRole } from "@/lib/auth-role"
 import { getYakamozJobs } from "@/lib/yakamoz-data"
 import { getYakamozContacts } from "@/lib/yakamoz-whatsapp-data"
 import { getYakamozCustomerSummaries, phoneLast10 } from "@/lib/yakamoz"
 import { formatDate } from "@/lib/format"
 
 export default async function YakamozMusterilerPage() {
-  const [jobs, contacts, session] = await Promise.all([
-    getYakamozJobs(),
-    getYakamozContacts(),
-    getSessionRole(),
-  ])
+  const [jobs, contacts] = await Promise.all([getYakamozJobs(), getYakamozContacts()])
 
   const summaries = getYakamozCustomerSummaries(jobs)
   const contactByLast10 = new Map(contacts.map((c) => [phoneLast10(c.phone), c.id]))
@@ -26,13 +21,13 @@ export default async function YakamozMusterilerPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between">
         <Link
-          href="/yakamoz"
+          href="/yakamoz-whatsapp"
           className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" />
-          Yakamoz
+          Yakamoz WhatsApp
         </Link>
-        {session?.role === "owner" ? <LogoutButton /> : <span />}
+        <LogoutButton />
       </div>
 
       <PageHeader
@@ -78,7 +73,7 @@ export default async function YakamozMusterilerPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     {contactId ? (
                       <Link
-                        href={`/yakamoz/whatsapp/${contactId}`}
+                        href={`/yakamoz-whatsapp/${contactId}`}
                         className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                       >
                         Konuşmayı Aç

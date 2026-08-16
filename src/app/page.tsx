@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Clapperboard, Droplets, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
+import { Clapperboard, Droplets, MessageCircle, Sparkles, SprayCan, Users, Wallet } from "lucide-react"
 
 import { LogoutButton } from "@/components/auth/logout-button"
 
@@ -39,6 +39,12 @@ const apps = [
     description: "Müşteri, randevu ve kurye/servis takibi.",
     href: "/yakamoz",
     icon: Droplets,
+  },
+  {
+    title: "Yakamoz WhatsApp",
+    description: "Konuşma takibi, müdahale ve hatırlatma mesajları.",
+    href: "/yakamoz-whatsapp",
+    icon: MessageCircle,
   },
 ]
 

@@ -9,9 +9,9 @@ import { phoneLast10 } from "@/lib/yakamoz"
 import type { ActionState } from "@/lib/actions/shared"
 
 function revalidateYakamozWhatsappPages() {
-  revalidatePath("/yakamoz/whatsapp")
-  revalidatePath("/yakamoz/whatsapp/[id]", "page")
-  revalidatePath("/yakamoz/musteriler")
+  revalidatePath("/yakamoz-whatsapp")
+  revalidatePath("/yakamoz-whatsapp/[id]", "page")
+  revalidatePath("/yakamoz-whatsapp/musteriler")
 }
 
 async function logOutgoingMessage(contactId: string, phone: string, body: string): Promise<ActionState> {

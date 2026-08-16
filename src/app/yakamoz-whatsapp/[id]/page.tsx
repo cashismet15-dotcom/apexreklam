@@ -24,7 +24,7 @@ export default async function YakamozWhatsappContactPage({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <Link
-        href="/yakamoz/whatsapp"
+        href="/yakamoz-whatsapp"
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="size-4" />
