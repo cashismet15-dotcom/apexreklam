@@ -204,3 +204,31 @@ export interface YakamozStatusLog {
   status: YakamozJobStatus
   changed_at: string
 }
+
+export interface YakamozContact {
+  id: string
+  phone: string
+  name: string | null
+  ai_paused: boolean
+  last_message_at: string | null
+  created_at: string
+}
+
+export type YakamozWaDirection = "gelen" | "giden"
+
+export interface YakamozWaMessage {
+  id: string
+  contact_id: string
+  direction: YakamozWaDirection
+  body: string
+  external_message_id: string | null
+  created_at: string
+}
+
+export interface YakamozCustomerSummary {
+  phone: string
+  customer_name: string | null
+  lastServiceDate: string | null
+  totalJobs: number
+  needsReminder: boolean
+}
