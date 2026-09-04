@@ -822,3 +822,97 @@ export async function uploadAvatar(_prevState: ActionState, formData: FormData):
   revalidatePath("/panel", "layout")
   return { status: "success", message: "Profil resmi güncellendi." }
 }
+
+function revalidateLeads() {
+  revalidatePath("/panel/potansiyel-musteriler")
+}
+
+const leadSchema = z.object({
+  name: z.string().trim().max(200).optional().or(z.literal("")),
+  phone: z.string().trim().min(1, "Telefon zorunlu").max(40),
+  note: z.string().trim().max(2000).optional().or(z.literal("")),
+})
+
+/** Potansiyel Müşteriler'e hızlı ekleme — sadece telefon zorunlu, isim/not opsiyonel. */
+export async function createLead(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const role = await requireCustomerManager()
+
+  const parsed = leadSchema.safeParse({
+    name: formData.get("name"),
+    phone: formData.get("phone"),
+    note: formData.get("note"),
+  })
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Formda hatalar var.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { error } = await supabase.from("panel_leads").insert({
+    name: parsed.data.name || null,
+    phone: parsed.data.phone,
+    note: parsed.data.note || null,
+    created_by: role,
+  })
+
+  if (error) {
+    return { status: "error", message: `Eklenemedi: ${error.message}` }
+  }
+
+  revalidateLeads()
+  return { status: "success", message: "Potansiyel müşteri eklendi." }
+}
+
+export async function deleteLead(leadId: string): Promise<ActionState> {
+  await requireCustomerManager()
+
+  const { error } = await supabase.from("panel_leads").delete().eq("id", leadId)
+  if (error) {
+    return { status: "error", message: `Silinemedi: ${error.message}` }
+  }
+
+  revalidateLeads()
+  return { status: "success", message: "Silindi." }
+}
+
+/** Bir adayı gerçek müşteriye (Şirketler) dönüştürür — ücret/ödeme günü yer tutucuyla, sonra Muhasebe'den tamamlanır. */
+export async function convertLeadToCustomer(leadId: string): Promise<ActionState> {
+  await requireCustomerManager()
+
+  const { data: lead, error: fetchError } = await supabase
+    .from("panel_leads")
+    .select("name, phone, note")
+    .eq("id", leadId)
+    .maybeSingle()
+
+  if (fetchError || !lead) {
+    return { status: "error", message: "Aday bulunamadı." }
+  }
+
+  const displayName = lead.name || lead.phone
+
+  const { error: insertError } = await supabase.from("customers").insert({
+    company_name: displayName,
+    contact_name: displayName,
+    phone: lead.phone,
+    notes: lead.note,
+    monthly_fee: PLACEHOLDER_MONTHLY_FEE,
+    payment_day: PLACEHOLDER_PAYMENT_DAY,
+    status: "aktif",
+  })
+
+  if (insertError) {
+    return { status: "error", message: `Müşteriye dönüştürülemedi: ${insertError.message}` }
+  }
+
+  const { error: deleteError } = await supabase.from("panel_leads").delete().eq("id", leadId)
+  if (deleteError) {
+    return { status: "error", message: `Aday listeden silinemedi: ${deleteError.message}` }
+  }
+
+  revalidateLeads()
+  revalidatePanel()
+  return { status: "success", message: "Müşteriye dönüştürüldü — Şirketler'de görünüyor." }
+}

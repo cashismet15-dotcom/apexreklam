@@ -10,6 +10,7 @@ import {
   FileText,
   LayoutDashboard,
   StickyNote,
+  UserPlus,
   UserRound,
   Users,
   Video,
@@ -40,9 +41,12 @@ interface MenuItem {
 function buildMenu(role: TeamMemberRole): MenuItem[] {
   const items: MenuItem[] = [{ title: "Dashboard", href: "/panel", icon: LayoutDashboard }]
 
-  // Şirketler (müşteri ekleme/çıkarma dahil) — sadece owner ve Batuhan.
+  // Şirketler ve Potansiyel Müşteriler (müşteri verisiyle ilgili her şey) — sadece owner ve Batuhan.
   if (canViewCustomers(role)) {
-    items.push({ title: "Şirketler", href: "/panel/sirketler", icon: Building2 })
+    items.push(
+      { title: "Şirketler", href: "/panel/sirketler", icon: Building2 },
+      { title: "Potansiyel Müşteriler", href: "/panel/potansiyel-musteriler", icon: UserPlus }
+    )
   }
 
   items.push(

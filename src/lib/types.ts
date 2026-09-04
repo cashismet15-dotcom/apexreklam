@@ -220,6 +220,16 @@ export interface PanelMessage {
   created_at: string
 }
 
+/** Panel modülü: Potansiyel Müşteriler — henüz Şirketler'e dönüşmemiş adaylar. */
+export interface PanelLead {
+  id: string
+  name: string | null
+  phone: string
+  note: string | null
+  created_by: TeamMemberRole
+  created_at: string
+}
+
 /** Panel modülü: bir müşterinin ayı için Meta reklam rakamları (manuel girilir). */
 export interface ClientAdReport {
   id: string

@@ -15,6 +15,7 @@ import type {
   ClientTaskWithCustomer,
   Customer,
   Payment,
+  PanelLead,
   PanelMeeting,
   PanelMessage,
   PanelNote,
@@ -353,4 +354,15 @@ export async function getTeamAvatars(): Promise<Record<TeamMemberRole, string | 
     map[row.role as TeamMemberRole] = row.avatar_url
   }
   return map
+}
+
+/** Potansiyel Müşteriler — henüz Şirketler'e dönüşmemiş adaylar, en yeni önce. */
+export async function getPanelLeads(): Promise<PanelLead[]> {
+  const { data, error } = await supabase
+    .from("panel_leads")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  if (error) fail("Potansiyel müşteriler alınamadı", error)
+  return data
 }
