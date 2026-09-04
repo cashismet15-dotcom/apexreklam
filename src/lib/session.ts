@@ -1,19 +1,15 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
-export type AppRole = "owner" | "ufo" | "partner" | "yakamoz" | "huseyin" | "batuhan"
+export type AppRole = "owner" | "huseyin" | "batuhan"
 
 export interface Session {
   role: AppRole
-  /** Sadece role === "partner" için dolu — o taşeron firmanın partner_companies.id'si. */
-  companyId?: string
 }
 
 export const SESSION_COOKIE = "apex_session"
 
 function payloadString(session: Session): string {
-  return session.role === "partner" && session.companyId
-    ? `partner:${session.companyId}`
-    : session.role
+  return session.role
 }
 
 function sign(payload: string): string {
@@ -32,18 +28,8 @@ export function verifySessionValue(value?: string | null): Session | null {
   if (!payload) return null
 
   let session: Session
-  if (
-    payload === "owner" ||
-    payload === "ufo" ||
-    payload === "yakamoz" ||
-    payload === "huseyin" ||
-    payload === "batuhan"
-  ) {
+  if (payload === "owner" || payload === "huseyin" || payload === "batuhan") {
     session = { role: payload }
-  } else if (payload.startsWith("partner:")) {
-    const companyId = payload.slice("partner:".length)
-    if (!companyId) return null
-    session = { role: "partner", companyId }
   } else {
     return null
   }

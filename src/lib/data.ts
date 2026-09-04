@@ -1,7 +1,7 @@
 import "server-only"
 
 import { supabase } from "@/lib/supabase"
-import type { ContentWeek, Customer, Payment, PaymentWithCustomer } from "@/lib/types"
+import type { Customer, Payment, PaymentWithCustomer } from "@/lib/types"
 
 function fail(context: string, error: { message: string }): never {
   throw new Error(`${context}: ${error.message}`)
@@ -72,23 +72,3 @@ export async function getDashboardData(): Promise<DashboardData> {
   return { customers, payments }
 }
 
-export async function getContentWeeksForWeek(weekStart: string): Promise<ContentWeek[]> {
-  const { data, error } = await supabase
-    .from("content_weeks")
-    .select("*")
-    .eq("week_start", weekStart)
-
-  if (error) fail("İçerik durumları alınamadı", error)
-  return data
-}
-
-export async function getContentWeeksForCustomer(customerId: string): Promise<ContentWeek[]> {
-  const { data, error } = await supabase
-    .from("content_weeks")
-    .select("*")
-    .eq("customer_id", customerId)
-    .order("week_start", { ascending: false })
-
-  if (error) fail("İçerik geçmişi alınamadı", error)
-  return data
-}

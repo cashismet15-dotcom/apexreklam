@@ -1,5 +1,3 @@
-import type { DailyHabit, DailyHabitLog } from "@/lib/types"
-
 const WEEKDAY_LABELS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
 
 function pad2(n: number): string {
@@ -70,49 +68,3 @@ export function formatWeekRangeLabel(weekStart: string): string {
   return `${startLabel} – ${endLabel}`
 }
 
-export interface WeeklyReport {
-  weekStart: string
-  dates: string[]
-  habits: DailyHabit[]
-  /** habitId -> date -> done */
-  doneMap: Map<string, Map<string, boolean>>
-  /** Her gün için tamamlanan/toplam görev sayısı ve yüzde. */
-  dayStats: { date: string; done: number; total: number; pct: number }[]
-  totalDone: number
-  totalPossible: number
-  completionPct: number
-}
-
-export function buildWeeklyReport(
-  weekStart: string,
-  habits: DailyHabit[],
-  logs: DailyHabitLog[]
-): WeeklyReport {
-  const dates = buildWeekDates(weekStart)
-  const doneMap = new Map<string, Map<string, boolean>>()
-  for (const habit of habits) doneMap.set(habit.id, new Map())
-  for (const log of logs) {
-    if (!doneMap.has(log.habit_id)) doneMap.set(log.habit_id, new Map())
-    doneMap.get(log.habit_id)!.set(log.log_date, log.done)
-  }
-
-  const dayStats = dates.map((date) => {
-    const total = habits.length
-    const done = habits.reduce((acc, h) => acc + (doneMap.get(h.id)?.get(date) ? 1 : 0), 0)
-    return { date, done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) }
-  })
-
-  const totalDone = dayStats.reduce((acc, d) => acc + d.done, 0)
-  const totalPossible = dayStats.reduce((acc, d) => acc + d.total, 0)
-
-  return {
-    weekStart,
-    dates,
-    habits,
-    doneMap,
-    dayStats,
-    totalDone,
-    totalPossible,
-    completionPct: totalPossible === 0 ? 0 : Math.round((totalDone / totalPossible) * 100),
-  }
-}

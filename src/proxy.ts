@@ -13,21 +13,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (session.role === "ufo" && !pathname.startsWith("/ufo-temizlik")) {
-    return NextResponse.redirect(new URL("/ufo-temizlik", request.url))
-  }
-
-  if (session.role === "yakamoz" && !pathname.startsWith("/yakamoz")) {
-    return NextResponse.redirect(new URL("/yakamoz", request.url))
-  }
-
-  if (session.role === "partner" && !pathname.startsWith("/taseron")) {
-    return NextResponse.redirect(new URL("/taseron", request.url))
-  }
-
   if (session.role === "huseyin" || session.role === "batuhan") {
-    const allowed = pathname.startsWith("/panel") || pathname.startsWith("/gorevler")
-    if (!allowed) {
+    if (!pathname.startsWith("/panel")) {
       return NextResponse.redirect(new URL("/panel", request.url))
     }
   }

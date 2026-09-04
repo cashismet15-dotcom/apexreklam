@@ -1,16 +1,5 @@
 import Link from "next/link"
-import {
-  Briefcase,
-  Clapperboard,
-  Droplets,
-  ListChecks,
-  Megaphone,
-  MessageCircle,
-  Sparkles,
-  SprayCan,
-  Users,
-  Wallet,
-} from "lucide-react"
+import { Briefcase, Sparkles, Wallet } from "lucide-react"
 
 import { LogoutButton } from "@/components/auth/logout-button"
 
@@ -22,58 +11,16 @@ const apps = [
     icon: Wallet,
   },
   {
-    title: "Müşteri Takip",
-    description: "CRM — müşteri ilişkileri ve iletişim takibi.",
-    href: "/musteri-takip",
-    icon: Users,
-  },
-  {
-    title: "İçerik Takibi",
-    description: "Danışan bazlı haftalık video süreci, logo ve talimatlar.",
-    href: "/icerik-takip",
-    icon: Clapperboard,
-  },
-  {
     title: "Manifest",
     description: "Modun, ilkelerin ve telkinlerin — girdikçe büyüyen ciro sayacı.",
     href: "/manifest",
     icon: Sparkles,
   },
   {
-    title: "Günlük Görevler",
-    description: "Personel ve senin için günlük görev listesi, kutucukla işaretle.",
-    href: "/gorevler",
-    icon: ListChecks,
-  },
-  {
     title: "Panel",
     description: "Ekip CRM'i — şirket kartları, görev atama ve Meta reklam raporu.",
     href: "/panel",
     icon: Briefcase,
-  },
-  {
-    title: "Ufo Temizlik",
-    description: "Ev temizliği ve koltuk yıkama iş & ciro takibi.",
-    href: "/ufo-temizlik",
-    icon: SprayCan,
-  },
-  {
-    title: "Yakamoz Halı Yıkama",
-    description: "Müşteri, randevu ve kurye/servis takibi.",
-    href: "/yakamoz",
-    icon: Droplets,
-  },
-  {
-    title: "Yakamoz WhatsApp",
-    description: "Konuşma takibi, müdahale ve hatırlatma mesajları.",
-    href: "/yakamoz-whatsapp",
-    icon: MessageCircle,
-  },
-  {
-    title: "Yakamoz Haberleşme",
-    description: "Şablonlar, özel gün takvimi ve toplu WhatsApp mesajları.",
-    href: "/yakamoz-haberlesme",
-    icon: Megaphone,
   },
 ]
 

@@ -4,8 +4,6 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { SESSION_COOKIE, signSession, type Session } from "@/lib/session"
-import { verifyPasscode } from "@/lib/partner-auth"
-import { supabase } from "@/lib/supabase"
 import type { ActionState } from "@/lib/actions/shared"
 
 function isSafeNextPath(value: FormDataEntryValue | null): value is string {
@@ -28,20 +26,6 @@ export async function login(_prevState: ActionState, formData: FormData): Promis
   } else if (
     username &&
     passcode &&
-    username === process.env.APP_UFO_USERNAME &&
-    passcode === process.env.APP_UFO_PASSCODE
-  ) {
-    session = { role: "ufo" }
-  } else if (
-    username &&
-    passcode &&
-    username === process.env.APP_YAKAMOZ_USERNAME &&
-    passcode === process.env.APP_YAKAMOZ_PASSCODE
-  ) {
-    session = { role: "yakamoz" }
-  } else if (
-    username &&
-    passcode &&
     username === process.env.APP_HUSEYIN_USERNAME &&
     passcode === process.env.APP_HUSEYIN_PASSCODE
   ) {
@@ -53,17 +37,6 @@ export async function login(_prevState: ActionState, formData: FormData): Promis
     passcode === process.env.APP_BATUHAN_PASSCODE
   ) {
     session = { role: "batuhan" }
-  } else if (username && passcode) {
-    const { data: company } = await supabase
-      .from("partner_companies")
-      .select("id, passcode_hash")
-      .eq("username", username)
-      .eq("active", true)
-      .maybeSingle()
-
-    if (company && verifyPasscode(passcode, company.passcode_hash)) {
-      session = { role: "partner", companyId: company.id }
-    }
   }
 
   if (!session) {
@@ -79,22 +52,8 @@ export async function login(_prevState: ActionState, formData: FormData): Promis
     maxAge: 60 * 60 * 24 * 60,
   })
 
-  if (session.role === "ufo") {
-    redirect(isSafeNextPath(next) && next.startsWith("/ufo-temizlik") ? next : "/ufo-temizlik")
-  }
-
-  if (session.role === "yakamoz") {
-    redirect(isSafeNextPath(next) && next.startsWith("/yakamoz") ? next : "/yakamoz")
-  }
-
-  if (session.role === "partner") {
-    redirect(isSafeNextPath(next) && next.startsWith("/taseron") ? next : "/taseron")
-  }
-
   if (session.role === "huseyin" || session.role === "batuhan") {
-    const allowed =
-      isSafeNextPath(next) && (next.startsWith("/panel") || next.startsWith("/gorevler"))
-    redirect(allowed ? next : "/panel")
+    redirect(isSafeNextPath(next) && next.startsWith("/panel") ? next : "/panel")
   }
 
   redirect(isSafeNextPath(next) ? next : "/")
