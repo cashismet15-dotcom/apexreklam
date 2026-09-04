@@ -31,7 +31,7 @@ export default async function PanelNotlarPage() {
             <p className="text-xs text-muted-foreground">Sadece sen görürsün.</p>
             <AddNoteForm isPrivate placeholder="Sadece sana özel bir not yaz..." />
             <Separator />
-            <NoteList groups={myGroups} emptyLabel="Henüz kişisel notun yok." />
+            <NoteList groups={myGroups} currentRole={role} emptyLabel="Henüz kişisel notun yok." />
           </CardContent>
         </Card>
 
@@ -43,7 +43,7 @@ export default async function PanelNotlarPage() {
             <p className="text-xs text-muted-foreground">Herkes görür, herkes yazabilir.</p>
             <AddNoteForm isPrivate={false} placeholder="Ekiple paylaşılacak bir not yaz..." />
             <Separator />
-            <NoteList groups={generalGroups} emptyLabel="Henüz genel not yok." />
+            <NoteList groups={generalGroups} currentRole={role} emptyLabel="Henüz genel not yok." />
           </CardContent>
         </Card>
       </div>

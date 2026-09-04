@@ -26,6 +26,8 @@ interface TaskFormDialogProps {
   /** null ise genel/dahili bir görev oluşturulur — belirli bir müşteriye bağlı değil. */
   customerId: string | null
   defaultAssignee: TeamMemberRole
+  /** Bir nottan/mesajdan "Görev Ata" ile açıldığında başlığı önceden doldurur. */
+  defaultTitle?: string
 }
 
 export function TaskFormDialog({
@@ -33,6 +35,7 @@ export function TaskFormDialog({
   onOpenChange,
   customerId,
   defaultAssignee,
+  defaultTitle,
 }: TaskFormDialogProps) {
   const action = createClientTask.bind(null, customerId)
   const [state, formAction, isPending] = useActionState(action, initialActionState)
@@ -51,7 +54,13 @@ export function TaskFormDialog({
         <form action={formAction} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="title">Başlık</Label>
-            <Input id="title" name="title" placeholder="örn. Eylül ayı reklam güncellemesi" required />
+            <Input
+              id="title"
+              name="title"
+              placeholder="örn. Eylül ayı reklam güncellemesi"
+              defaultValue={defaultTitle}
+              required
+            />
             <FieldError errors={state.fieldErrors?.title} />
           </div>
 

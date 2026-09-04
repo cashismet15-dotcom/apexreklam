@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { MessageCircle, RefreshCw, Send, X } from "lucide-react"
 
+import { AssignTaskButton } from "@/components/panel/assign-task-button"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { sendPanelMessage } from "@/lib/actions/panel"
@@ -79,7 +80,10 @@ export function ChatWidget({
             return (
               <div
                 key={m.id}
-                className={cn("flex max-w-[85%] flex-col", isMine ? "self-end items-end" : "self-start items-start")}
+                className={cn(
+                  "group/msg flex max-w-[85%] flex-col",
+                  isMine ? "self-end items-end" : "self-start items-start"
+                )}
               >
                 <span className="text-[10px] text-muted-foreground">
                   {TEAM_MEMBER_LABEL[m.author]} · {formatTimeTr(m.created_at)}
@@ -92,6 +96,11 @@ export function ChatWidget({
                 >
                   {m.body}
                 </div>
+                <AssignTaskButton
+                  sourceText={m.body}
+                  defaultAssignee={currentRole}
+                  className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 group-hover/msg:opacity-100"
+                />
               </div>
             )
           })

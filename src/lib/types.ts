@@ -246,6 +246,7 @@ export interface AttachmentWithContext extends ClientTaskAttachment {
 
 /** Panel modülü: dashboard/profil'deki motivasyon istatistikleri (görevlerim özeti). */
 export interface TaskStats {
+  completedThisWeek: number
   completedThisMonth: number
   completedTotal: number
   openCount: number

@@ -1,7 +1,7 @@
 import "server-only"
 
 import { computeCollectionStatuses, type CustomerCollectionStatus } from "@/lib/collections"
-import { todayIso } from "@/lib/daily-tracker"
+import { todayIso, weekStartIso } from "@/lib/daily-tracker"
 import { sortBugs } from "@/lib/panel"
 import { supabase } from "@/lib/supabase"
 import type {
@@ -195,22 +195,17 @@ const EMPTY_CATEGORY_COUNTS: Record<ClientTaskCategory, number> = {
   diger: 0,
 }
 
-/** Dashboard/Profil'deki motivasyon istatistikleri: tamamlanan/açık/gecikmiş görev sayıları. */
-export async function getTaskStatsForViewer(viewerRole: TeamMemberRole): Promise<TaskStats> {
-  let query = supabase.from("client_tasks").select("status, category, completed_at, due_date")
+type TaskStatsRow = { status: string; category: string; completed_at: string | null; due_date: string | null }
 
-  if (viewerRole !== "owner") {
-    query = query.eq("assigned_to", viewerRole)
-  }
-
-  const { data, error } = await query
-  if (error) fail("İstatistikler alınamadı", error)
-
-  const tasks = data ?? []
+function buildTaskStats(tasks: TaskStatsRow[]): TaskStats {
   const today = todayIso()
   const monthPrefix = today.slice(0, 7)
+  const weekStart = weekStartIso(today)
 
   const completed = tasks.filter((t) => t.status === "tamamlandi")
+  const completedThisWeek = completed.filter(
+    (t) => t.completed_at && t.completed_at.slice(0, 10) >= weekStart
+  ).length
   const completedThisMonth = completed.filter(
     (t) => t.completed_at && t.completed_at.slice(0, 7) === monthPrefix
   ).length
@@ -225,12 +220,27 @@ export async function getTaskStatsForViewer(viewerRole: TeamMemberRole): Promise
   }
 
   return {
+    completedThisWeek,
     completedThisMonth,
     completedTotal: completed.length,
     openCount,
     overdueCount,
     byCategory,
   }
+}
+
+/** Dashboard/Profil'deki motivasyon istatistikleri: tamamlanan/açık/gecikmiş görev sayıları. */
+export async function getTaskStatsForViewer(viewerRole: TeamMemberRole): Promise<TaskStats> {
+  let query = supabase.from("client_tasks").select("status, category, completed_at, due_date")
+
+  if (viewerRole !== "owner") {
+    query = query.eq("assigned_to", viewerRole)
+  }
+
+  const { data, error } = await query
+  if (error) fail("İstatistikler alınamadı", error)
+
+  return buildTaskStats(data ?? [])
 }
 
 /** Hata Takibi: tüm YZ hata kayıtları, müşteri adıyla — açık/kritik önce, çözülenler en sonda. */
@@ -282,25 +292,19 @@ export async function getTaskStatsForRole(role: TeamMemberRole): Promise<TaskSta
 
   if (error) fail("İstatistikler alınamadı", error)
 
-  const tasks = data ?? []
-  const today = todayIso()
-  const monthPrefix = today.slice(0, 7)
+  return buildTaskStats(data ?? [])
+}
 
-  const completed = tasks.filter((t) => t.status === "tamamlandi")
-  const completedThisMonth = completed.filter(
-    (t) => t.completed_at && t.completed_at.slice(0, 7) === monthPrefix
-  ).length
-  const openCount = tasks.filter((t) => t.status !== "tamamlandi").length
-  const overdueCount = tasks.filter(
-    (t) => t.status !== "tamamlandi" && t.due_date && t.due_date < today
-  ).length
+/** Bu hafta (Pazartesi'den bugüne) sisteme eklenen aktif müşteri sayısı — dashboard motivasyon istatistiği. */
+export async function getNewCustomersThisWeekCount(): Promise<number> {
+  const weekStart = weekStartIso(todayIso())
+  const { count, error } = await supabase
+    .from("customers")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", `${weekStart}T00:00:00`)
 
-  const byCategory: Record<ClientTaskCategory, number> = { ...EMPTY_CATEGORY_COUNTS }
-  for (const t of completed) {
-    byCategory[t.category as ClientTaskCategory] += 1
-  }
-
-  return { completedThisMonth, completedTotal: completed.length, openCount, overdueCount, byCategory }
+  if (error) fail("Müşteri sayısı alınamadı", error)
+  return count ?? 0
 }
 
 /** Yaklaşan toplantılar — dashboard widget'ı için, en yakın önce. */

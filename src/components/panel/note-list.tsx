@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react"
 import { Trash2 } from "lucide-react"
 
+import { AssignTaskButton } from "@/components/panel/assign-task-button"
 import { deletePanelNote } from "@/lib/actions/panel"
 import { TEAM_MEMBER_LABEL, formatTimeTr, type NoteDayGroup } from "@/lib/panel"
-import type { PanelNote } from "@/lib/types"
+import type { PanelNote, TeamMemberRole } from "@/lib/types"
 
-function NoteRow({ note }: { note: PanelNote }) {
+function NoteRow({ note, currentRole }: { note: PanelNote; currentRole: TeamMemberRole }) {
   const [removed, setRemoved] = useState(false)
   const [isDeleting, startDelete] = useTransition()
 
@@ -26,9 +27,16 @@ function NoteRow({ note }: { note: PanelNote }) {
       <span className="mt-0.5 shrink-0 text-xs tabular-nums text-muted-foreground">
         {formatTimeTr(note.created_at)}
       </span>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="whitespace-pre-wrap text-sm">{note.body}</p>
-        <span className="text-xs text-muted-foreground">{TEAM_MEMBER_LABEL[note.author]}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{TEAM_MEMBER_LABEL[note.author]}</span>
+          <AssignTaskButton
+            sourceText={note.body}
+            defaultAssignee={currentRole}
+            className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 group-hover/note:opacity-100"
+          />
+        </div>
       </div>
       <button
         type="button"
@@ -45,9 +53,11 @@ function NoteRow({ note }: { note: PanelNote }) {
 
 export function NoteList({
   groups,
+  currentRole,
   emptyLabel = "Henüz not yok.",
 }: {
   groups: NoteDayGroup[]
+  currentRole: TeamMemberRole
   emptyLabel?: string
 }) {
   if (groups.length === 0) {
@@ -63,7 +73,7 @@ export function NoteList({
           </h3>
           <div className="flex flex-col divide-y">
             {group.notes.map((note) => (
-              <NoteRow key={note.id} note={note} />
+              <NoteRow key={note.id} note={note} currentRole={currentRole} />
             ))}
           </div>
         </div>

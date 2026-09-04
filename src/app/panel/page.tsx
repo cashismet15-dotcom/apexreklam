@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert } from "lucide-react"
+import { CalendarCheck, CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert, UserPlus } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMeetingButton } from "@/components/panel/add-meeting-button"
@@ -12,9 +12,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { getSessionRole } from "@/lib/auth-role"
 import { todayIso } from "@/lib/daily-tracker"
-import { TEAM_MEMBER_LABEL, groupNotesByDay, toTeamRole } from "@/lib/panel"
+import { TEAM_MEMBER_LABEL, canViewCustomers, groupNotesByDay, toTeamRole } from "@/lib/panel"
 import {
   getGeneralNotes,
+  getNewCustomersThisWeekCount,
   getOpenTasksForViewer,
   getTaskStatsForViewer,
   getUpcomingMeetings,
@@ -38,11 +39,14 @@ export default async function PanelDashboardPage() {
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const [tasks, stats, meetings, generalNotes] = await Promise.all([
+  const showCustomerStat = canViewCustomers(role)
+
+  const [tasks, stats, meetings, generalNotes, newCustomersThisWeek] = await Promise.all([
     getOpenTasksForViewer(role),
     getTaskStatsForViewer(role),
     getUpcomingMeetings(),
     getGeneralNotes(8),
+    showCustomerStat ? getNewCustomersThisWeekCount() : Promise.resolve(0),
   ])
   const noteGroups = groupNotesByDay(generalNotes)
 
@@ -69,10 +73,23 @@ export default async function PanelDashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          label="Bu Hafta Tamamlanan"
+          value={String(stats.completedThisWeek)}
+          icon={CalendarCheck}
+          tone="emerald"
+        />
+        <StatCard
           label="Bu Ay Tamamlanan"
           value={String(stats.completedThisMonth)}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="blue"
+        />
+        <StatCard label="Açık Görev" value={String(stats.openCount)} icon={ListTodo} tone="indigo" />
+        <StatCard
+          label="Gecikmiş"
+          value={String(stats.overdueCount)}
+          icon={stats.overdueCount > 0 ? TriangleAlert : Clock}
+          tone={stats.overdueCount > 0 ? "red" : "amber"}
         />
         <StatCard
           label="Toplam Tamamlanan"
@@ -80,13 +97,14 @@ export default async function PanelDashboardPage() {
           icon={Sparkles}
           tone="violet"
         />
-        <StatCard label="Açık Görev" value={String(stats.openCount)} icon={ListTodo} tone="blue" />
-        <StatCard
-          label="Gecikmiş"
-          value={String(stats.overdueCount)}
-          icon={stats.overdueCount > 0 ? TriangleAlert : Clock}
-          tone={stats.overdueCount > 0 ? "red" : "amber"}
-        />
+        {showCustomerStat ? (
+          <StatCard
+            label="Bu Hafta Eklenen Müşteri"
+            value={String(newCustomersThisWeek)}
+            icon={UserPlus}
+            tone="emerald"
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -117,7 +135,7 @@ export default async function PanelDashboardPage() {
         </div>
         <Card>
           <CardContent>
-            <NoteList groups={noteGroups} emptyLabel="Henüz genel not yok." />
+            <NoteList groups={noteGroups} currentRole={role} emptyLabel="Henüz genel not yok." />
           </CardContent>
         </Card>
       </div>
