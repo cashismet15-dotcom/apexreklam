@@ -117,13 +117,21 @@ export interface DocumentFile {
 /** Panel modülü: gerçek bir kullanıcılar tablosu yok, ekip kimliği session role'üyle birebir eşleşir. */
 export type TeamMemberRole = "owner" | "huseyin" | "batuhan"
 
+/** Panel modülü: her rolün kendi yükleyebileceği profil resmi. */
+export interface TeamAvatar {
+  role: TeamMemberRole
+  avatar_path: string | null
+  avatar_url: string | null
+  updated_at: string
+}
+
 export type ClientTaskCategory = "video" | "reklam" | "yapay_zeka" | "diger"
 export type ClientTaskStatus = "bekliyor" | "devam_ediyor" | "tamamlandi"
 
-/** Panel modülü: bir müşteri için yapılan/yapılacak, birine atanan iş. */
+/** Panel modülü: bir müşteri için yapılan/yapılacak, birine atanan iş. Boşsa genel/dahili bir görev. */
 export interface ClientTask {
   id: string
-  customer_id: string
+  customer_id: string | null
   title: string
   description: string | null
   category: ClientTaskCategory
@@ -136,7 +144,7 @@ export interface ClientTask {
 }
 
 export interface ClientTaskWithCustomer extends ClientTask {
-  customer: Pick<Customer, "id" | "company_name">
+  customer: Pick<Customer, "id" | "company_name"> | null
 }
 
 export type TaskAttachmentKind = "dosya" | "link"
@@ -183,11 +191,12 @@ export interface AiBugWithCustomer extends AiBug {
   customer: Pick<Customer, "id" | "company_name"> | null
 }
 
-/** Panel modülü: Notlar — paylaşımlı, tarihe göre gruplanan günlük not defteri. */
+/** Panel modülü: Notlar — genel (herkes görür) veya kişisel (sadece yazan görür), tarihe göre gruplanır. */
 export interface PanelNote {
   id: string
   author: TeamMemberRole
   body: string
+  is_private: boolean
   created_at: string
 }
 
@@ -230,7 +239,8 @@ export interface ClientAdReportWithCustomer extends ClientAdReport {
 export interface AttachmentWithContext extends ClientTaskAttachment {
   taskId: string
   taskTitle: string
-  customerId: string
+  /** Görev genel/dahili ise (bir müşteriye bağlı değilse) null. */
+  customerId: string | null
   customerName: string
 }
 

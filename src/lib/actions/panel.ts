@@ -54,8 +54,9 @@ const taskSchema = z.object({
   due_date: z.string().trim().optional().or(z.literal("")),
 })
 
+/** customerId null ise genel/dahili bir görev oluşturur — belirli bir müşteriye bağlı değil. */
 export async function createClientTask(
-  customerId: string,
+  customerId: string | null,
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
@@ -615,13 +616,20 @@ export async function deleteAiBug(bugId: string): Promise<ActionState> {
 
 function revalidateNotes() {
   revalidatePath("/panel/notlar")
+  // Genel notlar dashboard'da da gösteriliyor.
+  revalidatePath("/panel")
 }
 
 const noteSchema = z.object({
   body: z.string().trim().min(1, "Not boş olamaz").max(4000),
 })
 
-export async function addPanelNote(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+/** isPrivate true ise sadece yazan görür; false ise herkes görür (dashboard'daki Genel Notlar dahil). */
+export async function addPanelNote(
+  isPrivate: boolean,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
   const role = await requireTeamRole()
 
   const parsed = noteSchema.safeParse({ body: formData.get("body") })
@@ -636,6 +644,7 @@ export async function addPanelNote(_prevState: ActionState, formData: FormData):
   const { error } = await supabase.from("panel_notes").insert({
     author: role,
     body: parsed.data.body,
+    is_private: isPrivate,
   })
 
   if (error) {
@@ -754,4 +763,62 @@ export async function sendPanelMessage(_prevState: ActionState, formData: FormDa
   // revalidate edilmezse, o segment yeniden render edilmez ve mesaj görünmez.
   revalidatePath("/panel", "layout")
   return { status: "success" }
+}
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+
+/** Her ekip üyesi sadece kendi profil resmini değiştirebilir — session role'ünden alınır. */
+export async function uploadAvatar(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const role = await requireTeamRole()
+
+  const file = formData.get("file")
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", message: "Bir görsel seçin." }
+  }
+  if (!file.type.startsWith("image/")) {
+    return { status: "error", message: "Sadece görsel dosyası yüklenebilir." }
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    return { status: "error", message: "Görsel 5MB'tan büyük olamaz." }
+  }
+
+  const { data: existing } = await supabase
+    .from("team_avatars")
+    .select("avatar_path")
+    .eq("role", role)
+    .maybeSingle()
+
+  if (existing?.avatar_path) {
+    await supabase.storage.from(ATTACHMENTS_BUCKET).remove([existing.avatar_path])
+  }
+
+  const ext = sanitizeFileName(file.name).split(".").pop() || "png"
+  const path = `avatars/${role}-${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .upload(path, file, { contentType: file.type })
+
+  if (uploadError) {
+    return { status: "error", message: `Yüklenemedi: ${uploadError.message}` }
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(ATTACHMENTS_BUCKET).getPublicUrl(path)
+
+  const { error } = await supabase.from("team_avatars").upsert(
+    {
+      role,
+      avatar_path: path,
+      avatar_url: publicUrlData.publicUrl,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "role" }
+  )
+
+  if (error) {
+    return { status: "error", message: `Kaydedilemedi: ${error.message}` }
+  }
+
+  revalidatePath("/panel", "layout")
+  return { status: "success", message: "Profil resmi güncellendi." }
 }

@@ -4,13 +4,13 @@ import { PageHeader } from "@/components/layout/page-header"
 import { AddClientButton } from "@/components/panel/add-client-button"
 import { ClientCards } from "@/components/panel/client-cards"
 import { getSessionRole } from "@/lib/auth-role"
-import { canManageCustomers, toTeamRole } from "@/lib/panel"
+import { canManageCustomers, canViewCustomers, toTeamRole } from "@/lib/panel"
 import { getPanelCustomerStatuses } from "@/lib/panel-data"
 
 export default async function PanelSirketlerPage() {
   const session = await getSessionRole()
   const role = session ? toTeamRole(session.role) : null
-  if (!role) notFound()
+  if (!role || !canViewCustomers(role)) notFound()
 
   const statuses = await getPanelCustomerStatuses()
 

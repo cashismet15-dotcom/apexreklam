@@ -23,7 +23,8 @@ import type { TeamMemberRole } from "@/lib/types"
 interface TaskFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  customerId: string
+  /** null ise genel/dahili bir görev oluşturulur — belirli bir müşteriye bağlı değil. */
+  customerId: string | null
   defaultAssignee: TeamMemberRole
 }
 

@@ -9,8 +9,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { addPanelNote } from "@/lib/actions/panel"
 import { initialActionState } from "@/lib/actions/shared"
 
-export function AddNoteForm() {
-  const [state, formAction, isPending] = useActionState(addPanelNote, initialActionState)
+export function AddNoteForm({
+  isPrivate,
+  placeholder,
+}: {
+  isPrivate: boolean
+  placeholder?: string
+}) {
+  const action = addPanelNote.bind(null, isPrivate)
+  const [state, formAction, isPending] = useActionState(action, initialActionState)
   const formRef = useRef<HTMLFormElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -33,7 +40,7 @@ export function AddNoteForm() {
       <Textarea
         ref={textareaRef}
         name="body"
-        placeholder="Bir not yaz... (Enter ile ekle, yeni satır için Shift+Enter)"
+        placeholder={placeholder ?? "Bir not yaz... (Enter ile ekle, yeni satır için Shift+Enter)"}
         rows={2}
         required
         onKeyDown={handleKeyDown}

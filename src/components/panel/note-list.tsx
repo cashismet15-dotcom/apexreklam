@@ -43,13 +43,15 @@ function NoteRow({ note }: { note: PanelNote }) {
   )
 }
 
-export function NoteList({ groups }: { groups: NoteDayGroup[] }) {
+export function NoteList({
+  groups,
+  emptyLabel = "Henüz not yok.",
+}: {
+  groups: NoteDayGroup[]
+  emptyLabel?: string
+}) {
   if (groups.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Henüz not yok — yukarıdan ilk notunu ekle.
-      </p>
-    )
+    return <p className="py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
   }
 
   return (

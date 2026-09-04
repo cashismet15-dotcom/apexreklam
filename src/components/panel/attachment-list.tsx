@@ -36,12 +36,16 @@ export function AttachmentList({
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium">{attachment.label}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  <Link
-                    href={`/panel/${attachment.customerId}`}
-                    className="hover:text-foreground hover:underline"
-                  >
-                    {attachment.customerName}
-                  </Link>
+                  {attachment.customerId ? (
+                    <Link
+                      href={`/panel/${attachment.customerId}`}
+                      className="hover:text-foreground hover:underline"
+                    >
+                      {attachment.customerName}
+                    </Link>
+                  ) : (
+                    attachment.customerName
+                  )}
                   {" · "}
                   {attachment.taskTitle}
                   {attachment.file_size != null ? ` · ${formatFileSize(attachment.file_size)}` : ""}

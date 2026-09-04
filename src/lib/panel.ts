@@ -55,6 +55,11 @@ export function canManageCustomers(role: TeamMemberRole): boolean {
   return role === "owner" || role === "batuhan"
 }
 
+/** Şirketler bölümünü (liste + müşteri detay sayfaları) görebilecek roller — Hüseyin dahil değil. */
+export function canViewCustomers(role: TeamMemberRole): boolean {
+  return canManageCustomers(role)
+}
+
 /**
  * Panel'den (Batuhan tarafından) eklenen bir müşterinin aylık ücreti/ödeme günü
  * henüz gerçek değerine ayarlanmamışsa kullanılan yer tutucu — ekip tutar

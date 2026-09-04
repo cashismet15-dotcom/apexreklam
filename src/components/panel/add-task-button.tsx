@@ -8,10 +8,11 @@ import { TaskFormDialog } from "@/components/panel/task-form-dialog"
 import type { TeamMemberRole } from "@/lib/types"
 
 export function AddTaskButton({
-  customerId,
+  customerId = null,
   defaultAssignee,
 }: {
-  customerId: string
+  /** Verilmezse genel/dahili bir görev oluşturulur — belirli bir müşteriye bağlı değil. */
+  customerId?: string | null
   defaultAssignee: TeamMemberRole
 }) {
   const [open, setOpen] = useState(false)

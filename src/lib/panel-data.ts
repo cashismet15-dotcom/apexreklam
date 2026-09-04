@@ -121,7 +121,7 @@ export async function getClientAdReports(customerId: string): Promise<ClientAdRe
 /** viewerRole owner değilse sadece kendisine atanan görevler, owner ise hepsi — hafif alan seçimiyle. */
 async function getVisibleTasksLite(
   viewerRole: TeamMemberRole
-): Promise<{ id: string; title: string; customer_id: string; customer_name: string }[]> {
+): Promise<{ id: string; title: string; customer_id: string | null; customer_name: string }[]> {
   let query = supabase.from("client_tasks").select("id, title, customer_id, customer:customers(company_name)")
 
   if (viewerRole !== "owner") {
@@ -137,7 +137,7 @@ async function getVisibleTasksLite(
       id: t.id,
       title: t.title,
       customer_id: t.customer_id,
-      customer_name: customer?.company_name ?? "",
+      customer_name: customer?.company_name ?? "Genel",
     }
   })
 }
@@ -245,10 +245,28 @@ export async function getAiBugs(): Promise<AiBugWithCustomer[]> {
 }
 
 /** Notlar: tüm not kayıtları, en yeni önce (sayfada güne göre gruplanır). */
-export async function getPanelNotes(): Promise<PanelNote[]> {
+/** Genel notlar — herkes görür, herkes yazabilir. limit verilirse (ör. dashboard widget'ı) sadece en yeniler. */
+export async function getGeneralNotes(limit?: number): Promise<PanelNote[]> {
+  let query = supabase
+    .from("panel_notes")
+    .select("*")
+    .eq("is_private", false)
+    .order("created_at", { ascending: false })
+
+  if (limit) query = query.limit(limit)
+
+  const { data, error } = await query
+  if (error) fail("Notlar alınamadı", error)
+  return data
+}
+
+/** Bir kişinin kişisel notları — sadece o kişi görür, başkasına asla gitmez. */
+export async function getMyPrivateNotes(role: TeamMemberRole): Promise<PanelNote[]> {
   const { data, error } = await supabase
     .from("panel_notes")
     .select("*")
+    .eq("is_private", true)
+    .eq("author", role)
     .order("created_at", { ascending: false })
 
   if (error) fail("Notlar alınamadı", error)
@@ -319,4 +337,16 @@ export async function getRecentMessages(limit = 50): Promise<PanelMessage[]> {
 
   if (error) fail("Mesajlar alınamadı", error)
   return [...(data ?? [])].reverse()
+}
+
+/** Her rolün profil resmi URL'si — kaydı olmayan rol için null. */
+export async function getTeamAvatars(): Promise<Record<TeamMemberRole, string | null>> {
+  const { data, error } = await supabase.from("team_avatars").select("role, avatar_url")
+  if (error) fail("Profil resimleri alınamadı", error)
+
+  const map: Record<TeamMemberRole, string | null> = { owner: null, huseyin: null, batuhan: null }
+  for (const row of data ?? []) {
+    map[row.role as TeamMemberRole] = row.avatar_url
+  }
+  return map
 }

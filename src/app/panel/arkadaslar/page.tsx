@@ -1,20 +1,21 @@
 import { notFound } from "next/navigation"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { TeamAvatar } from "@/components/panel/team-avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { getSessionRole } from "@/lib/auth-role"
-import { initials } from "@/lib/format"
 import { TEAM_MEMBERS, toTeamRole } from "@/lib/panel"
-import { getTaskStatsForRole } from "@/lib/panel-data"
+import { getTaskStatsForRole, getTeamAvatars } from "@/lib/panel-data"
 
 export default async function PanelArkadaslarPage() {
   const session = await getSessionRole()
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const members = await Promise.all(
-    TEAM_MEMBERS.map(async (m) => ({ member: m, stats: await getTaskStatsForRole(m.value) }))
-  )
+  const [members, avatars] = await Promise.all([
+    Promise.all(TEAM_MEMBERS.map(async (m) => ({ member: m, stats: await getTaskStatsForRole(m.value) }))),
+    getTeamAvatars(),
+  ])
 
   return (
     <div className="flex flex-col gap-6">
@@ -24,9 +25,11 @@ export default async function PanelArkadaslarPage() {
         {members.map(({ member, stats }) => (
           <Card key={member.value}>
             <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
-              <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
-                {initials(member.label)}
-              </div>
+              <TeamAvatar
+                label={member.label}
+                url={avatars[member.value]}
+                className="size-14 text-lg font-semibold"
+              />
               <div>
                 <p className="font-semibold">{member.label}</p>
                 <p className="text-xs text-muted-foreground">

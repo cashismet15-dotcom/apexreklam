@@ -15,7 +15,7 @@ import { computeCollectionStatuses } from "@/lib/collections"
 import { getPaymentsForCustomer } from "@/lib/data"
 import { todayIso } from "@/lib/daily-tracker"
 import { formatCurrency, formatDate } from "@/lib/format"
-import { canManageCustomers, toTeamRole } from "@/lib/panel"
+import { canManageCustomers, canViewCustomers, toTeamRole } from "@/lib/panel"
 import { getClientAdReports, getClientTasks, getPanelCustomerById } from "@/lib/panel-data"
 
 export default async function PanelCustomerPage({
@@ -27,7 +27,7 @@ export default async function PanelCustomerPage({
 
   const session = await getSessionRole()
   const role = session ? toTeamRole(session.role) : null
-  if (!role) notFound()
+  if (!role || !canViewCustomers(role)) notFound()
 
   const customer = await getPanelCustomerById(id)
   if (!customer) notFound()

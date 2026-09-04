@@ -27,26 +27,48 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { LogoutButton } from "@/components/auth/logout-button"
-import { initials } from "@/lib/format"
-import { TEAM_MEMBER_LABEL } from "@/lib/panel"
+import { TeamAvatar } from "@/components/panel/team-avatar"
+import { TEAM_MEMBER_LABEL, canViewCustomers } from "@/lib/panel"
 import type { TeamMemberRole } from "@/lib/types"
 
-const menu = [
-  { title: "Dashboard", href: "/panel", icon: LayoutDashboard },
-  { title: "Şirketler", href: "/panel/sirketler", icon: Building2 },
-  { title: "Toplantılar", href: "/panel/toplantilar", icon: CalendarClock },
-  { title: "Sunumlar", href: "/panel/sunumlar", icon: FileText },
-  { title: "Video Montajları", href: "/panel/videolar", icon: Video },
-  { title: "Reklam Raporları", href: "/panel/raporlar", icon: BarChart3 },
-  { title: "Hata Takibi", href: "/panel/hatalar", icon: Bug },
-  { title: "Notlar", href: "/panel/notlar", icon: StickyNote },
-  { title: "Arkadaşlar", href: "/panel/arkadaslar", icon: Users },
-  { title: "Profil", href: "/panel/profil", icon: UserRound },
-]
+interface MenuItem {
+  title: string
+  href: string
+  icon: typeof LayoutDashboard
+}
 
-export function PanelSidebar({ role }: { role: TeamMemberRole }) {
+function buildMenu(role: TeamMemberRole): MenuItem[] {
+  const items: MenuItem[] = [{ title: "Dashboard", href: "/panel", icon: LayoutDashboard }]
+
+  // Şirketler (müşteri ekleme/çıkarma dahil) — sadece owner ve Batuhan.
+  if (canViewCustomers(role)) {
+    items.push({ title: "Şirketler", href: "/panel/sirketler", icon: Building2 })
+  }
+
+  items.push(
+    { title: "Toplantılar", href: "/panel/toplantilar", icon: CalendarClock },
+    { title: "Sunumlar", href: "/panel/sunumlar", icon: FileText },
+    { title: "Video Montajları", href: "/panel/videolar", icon: Video },
+    { title: "Reklam Raporları", href: "/panel/raporlar", icon: BarChart3 },
+    { title: "Hata Takibi", href: "/panel/hatalar", icon: Bug },
+    { title: "Notlar", href: "/panel/notlar", icon: StickyNote },
+    { title: "Arkadaşlar", href: "/panel/arkadaslar", icon: Users },
+    { title: "Profil", href: "/panel/profil", icon: UserRound }
+  )
+
+  return items
+}
+
+export function PanelSidebar({
+  role,
+  avatarUrl,
+}: {
+  role: TeamMemberRole
+  avatarUrl: string | null
+}) {
   const pathname = usePathname()
   const label = TEAM_MEMBER_LABEL[role]
+  const menu = buildMenu(role)
   // Ekip (huseyin/batuhan) yalnızca /panel ve /gorevler'e erişebiliyor — "/" onları
   // zaten proxy'de geri /panel'e atar. Owner (İsmet) ise tüm modüllere erişiyor,
   // o yüzden logo ana sayfaya çıksın — Panel'e girip çıkabilsin.
@@ -94,9 +116,7 @@ export function PanelSidebar({ role }: { role: TeamMemberRole }) {
           href="/panel/profil"
           className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-muted group-data-[collapsible=icon]:justify-center"
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
-            {initials(label)}
-          </div>
+          <TeamAvatar label={label} url={avatarUrl} className="text-xs font-medium" />
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-medium">{label}</span>
             <span className="text-xs text-muted-foreground">Profili gör</span>

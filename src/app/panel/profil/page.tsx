@@ -2,12 +2,13 @@ import { notFound } from "next/navigation"
 import { CheckCircle2, Clapperboard, Cpu, ListTodo, Megaphone, Sparkles } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { AvatarUploadButton } from "@/components/panel/avatar-upload-button"
 import { StatCard } from "@/components/dashboard/stat-card"
+import { TeamAvatar } from "@/components/panel/team-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getSessionRole } from "@/lib/auth-role"
-import { initials } from "@/lib/format"
 import { TASK_CATEGORY_LABEL, TEAM_MEMBER_LABEL, toTeamRole } from "@/lib/panel"
-import { getTaskStatsForViewer } from "@/lib/panel-data"
+import { getTaskStatsForViewer, getTeamAvatars } from "@/lib/panel-data"
 
 const CATEGORY_ICON = {
   video: Clapperboard,
@@ -21,7 +22,7 @@ export default async function PanelProfilPage() {
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const stats = await getTaskStatsForViewer(role)
+  const [stats, avatars] = await Promise.all([getTaskStatsForViewer(role), getTeamAvatars()])
   const label = TEAM_MEMBER_LABEL[role]
 
   return (
@@ -29,16 +30,15 @@ export default async function PanelProfilPage() {
       <PageHeader title="Profil" description="İstatistiklerin ve rolün." />
 
       <Card>
-        <CardContent className="flex items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
-            {initials(label)}
-          </div>
-          <div className="flex flex-col">
+        <CardContent className="flex flex-col items-center gap-4 sm:flex-row">
+          <TeamAvatar label={label} url={avatars[role]} className="size-14 text-lg font-semibold" />
+          <div className="flex flex-1 flex-col items-center sm:items-start">
             <span className="text-lg font-semibold">{label}</span>
             <span className="text-sm text-muted-foreground">
               {role === "owner" ? "Tam yetkili" : "Ekip üyesi"}
             </span>
           </div>
+          <AvatarUploadButton />
         </CardContent>
       </Card>
 

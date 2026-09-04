@@ -4,14 +4,21 @@ import { CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert } from "lucide-r
 
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMeetingButton } from "@/components/panel/add-meeting-button"
+import { AddTaskButton } from "@/components/panel/add-task-button"
 import { MeetingList } from "@/components/panel/meeting-list"
-import { OpenTasksList } from "@/components/panel/open-tasks-list"
+import { NoteList } from "@/components/panel/note-list"
+import { TasksByDay } from "@/components/panel/tasks-by-day"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { getSessionRole } from "@/lib/auth-role"
 import { todayIso } from "@/lib/daily-tracker"
-import { TEAM_MEMBER_LABEL, toTeamRole } from "@/lib/panel"
-import { getOpenTasksForViewer, getTaskStatsForViewer, getUpcomingMeetings } from "@/lib/panel-data"
+import { TEAM_MEMBER_LABEL, groupNotesByDay, toTeamRole } from "@/lib/panel"
+import {
+  getGeneralNotes,
+  getOpenTasksForViewer,
+  getTaskStatsForViewer,
+  getUpcomingMeetings,
+} from "@/lib/panel-data"
 
 function motivationMessage(completedThisMonth: number, overdueCount: number): string {
   if (overdueCount > 0) {
@@ -31,11 +38,13 @@ export default async function PanelDashboardPage() {
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const [tasks, stats, meetings] = await Promise.all([
+  const [tasks, stats, meetings, generalNotes] = await Promise.all([
     getOpenTasksForViewer(role),
     getTaskStatsForViewer(role),
     getUpcomingMeetings(),
+    getGeneralNotes(8),
   ])
+  const noteGroups = groupNotesByDay(generalNotes)
 
   const today = todayIso()
   const nowIso = new Date().toISOString()
@@ -97,10 +106,30 @@ export default async function PanelDashboardPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          {role === "owner" ? "Açık Görevler" : "Görevlerim"}
-        </h2>
-        <OpenTasksList tasks={tasks} todayIso={today} />
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">Genel Notlar</h2>
+          <Link
+            href="/panel/notlar"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Tümünü gör
+          </Link>
+        </div>
+        <Card>
+          <CardContent>
+            <NoteList groups={noteGroups} emptyLabel="Henüz genel not yok." />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            {role === "owner" ? "Açık Görevler" : "Görevlerim"}
+          </h2>
+          <AddTaskButton defaultAssignee={role} />
+        </div>
+        <TasksByDay tasks={tasks} todayIso={today} />
       </div>
     </div>
   )
