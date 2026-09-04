@@ -191,6 +191,26 @@ export interface PanelNote {
   created_at: string
 }
 
+/** Panel modülü: Toplantılar — basit kayıt, gerçek video görüşmesi burada olmaz. */
+export interface PanelMeeting {
+  id: string
+  title: string
+  meeting_at: string
+  note: string | null
+  link: string | null
+  participants: TeamMemberRole[]
+  created_by: TeamMemberRole
+  created_at: string
+}
+
+/** Panel modülü: Sohbet — tek kanallı, paylaşımlı ekip mesajlaşması. */
+export interface PanelMessage {
+  id: string
+  author: TeamMemberRole
+  body: string
+  created_at: string
+}
+
 /** Panel modülü: bir müşterinin ayı için Meta reklam rakamları (manuel girilir). */
 export interface ClientAdReport {
   id: string

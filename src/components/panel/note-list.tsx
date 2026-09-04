@@ -4,10 +4,8 @@ import { useState, useTransition } from "react"
 import { Trash2 } from "lucide-react"
 
 import { deletePanelNote } from "@/lib/actions/panel"
-import { TEAM_MEMBER_LABEL, type NoteDayGroup } from "@/lib/panel"
+import { TEAM_MEMBER_LABEL, formatTimeTr, type NoteDayGroup } from "@/lib/panel"
 import type { PanelNote } from "@/lib/types"
-
-const timeFormatter = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" })
 
 function NoteRow({ note }: { note: PanelNote }) {
   const [removed, setRemoved] = useState(false)
@@ -26,7 +24,7 @@ function NoteRow({ note }: { note: PanelNote }) {
   return (
     <div className="group/note flex items-start gap-3 py-2.5">
       <span className="mt-0.5 shrink-0 text-xs tabular-nums text-muted-foreground">
-        {timeFormatter.format(new Date(note.created_at))}
+        {formatTimeTr(note.created_at)}
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="whitespace-pre-wrap text-sm">{note.body}</p>

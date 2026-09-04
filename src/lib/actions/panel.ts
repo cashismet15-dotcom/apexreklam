@@ -8,6 +8,7 @@ import {
   PLACEHOLDER_MONTHLY_FEE,
   PLACEHOLDER_PAYMENT_DAY,
   canManageCustomers,
+  localDateTimeToIso,
   toTeamRole,
 } from "@/lib/panel"
 import { supabase } from "@/lib/supabase"
@@ -218,11 +219,21 @@ function parseCustomerInfoForm(formData: FormData) {
   })
 }
 
+// Hızlı ekleme formu: elimizdeki ham veriyi (isim bilinmese bile) hızlıca
+// girebilmek için — sadece telefon zorunlu. İsim boşsa görünen ad olarak
+// telefon numarası kullanılır, sonradan düzenlenebilir.
+const quickCustomerSchema = z.object({
+  name: z.string().trim().max(200).optional().or(z.literal("")),
+  phone: z.string().trim().min(1, "Telefon zorunlu").max(40),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+})
+
 /**
- * Panel'den yeni müşteri ekler — sadece şirket/iletişim bilgileriyle (aylık
- * ücret/ödeme günü ekip tarafından görülmüyor, dolayısıyla girilemiyor).
- * Yer tutucu ücretle (₺1) kaydedilir; patron Muhasebe'den gerçek tutarı girip
- * tamamlamalı — Panel'deki "Ücret Ayarlanmadı" rozeti bunu hatırlatır.
+ * Panel'den yeni müşteri ekler — sadece isim (opsiyonel), telefon (zorunlu)
+ * ve not ile, hızlıca. Aylık ücret/ödeme günü ekip tarafından görülmüyor,
+ * dolayısıyla girilemiyor — yer tutucu ücretle (₺1) kaydedilir, patron
+ * Muhasebe'den gerçek tutarı girip tamamlamalı (Panel'deki "Ücret
+ * Ayarlanmadı" rozeti bunu hatırlatır).
  */
 export async function createPanelCustomer(
   _prevState: ActionState,
@@ -230,7 +241,11 @@ export async function createPanelCustomer(
 ): Promise<ActionState> {
   await requireCustomerManager()
 
-  const parsed = parseCustomerInfoForm(formData)
+  const parsed = quickCustomerSchema.safeParse({
+    name: formData.get("name"),
+    phone: formData.get("phone"),
+    notes: formData.get("notes"),
+  })
   if (!parsed.success) {
     return {
       status: "error",
@@ -239,9 +254,11 @@ export async function createPanelCustomer(
     }
   }
 
+  const displayName = parsed.data.name || parsed.data.phone
+
   const { error } = await supabase.from("customers").insert({
-    company_name: parsed.data.company_name,
-    contact_name: parsed.data.contact_name,
+    company_name: displayName,
+    contact_name: displayName,
     phone: parsed.data.phone,
     notes: parsed.data.notes || null,
     monthly_fee: PLACEHOLDER_MONTHLY_FEE,
@@ -254,10 +271,7 @@ export async function createPanelCustomer(
   }
 
   revalidatePanel()
-  return {
-    status: "success",
-    message: "Müşteri eklendi — aylık ücreti Muhasebe'den tamamlaman gerekiyor.",
-  }
+  return { status: "success", message: "Müşteri eklendi." }
 }
 
 /** Panel'den müşterinin şirket/iletişim bilgilerini günceller — ücret/ödeme günü/durum bu forma dahil değil. */
@@ -642,4 +656,102 @@ export async function deletePanelNote(noteId: string): Promise<ActionState> {
 
   revalidateNotes()
   return { status: "success", message: "Not silindi." }
+}
+
+function revalidateMeetings() {
+  revalidatePath("/panel")
+  revalidatePath("/panel/toplantilar")
+}
+
+const meetingSchema = z.object({
+  title: z.string().trim().min(1, "Başlık gerekli").max(200),
+  meeting_at: z.string().trim().min(1, "Tarih/saat gerekli"),
+  note: z.string().trim().max(2000).optional().or(z.literal("")),
+  link: z.string().trim().max(500).optional().or(z.literal("")),
+  participants: z
+    .array(z.enum(["owner", "huseyin", "batuhan"]))
+    .min(1, "En az bir katılımcı seç"),
+})
+
+export async function createMeeting(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const role = await requireTeamRole()
+
+  const parsed = meetingSchema.safeParse({
+    title: formData.get("title"),
+    meeting_at: formData.get("meeting_at"),
+    note: formData.get("note"),
+    link: formData.get("link"),
+    participants: formData.getAll("participants"),
+  })
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Formda hatalar var.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const meetingAtIso = localDateTimeToIso(parsed.data.meeting_at)
+  if (!meetingAtIso) {
+    return { status: "error", message: "Geçerli bir tarih/saat girin." }
+  }
+
+  const { error } = await supabase.from("panel_meetings").insert({
+    title: parsed.data.title,
+    meeting_at: meetingAtIso,
+    note: parsed.data.note || null,
+    link: parsed.data.link || null,
+    participants: parsed.data.participants,
+    created_by: role,
+  })
+
+  if (error) {
+    return { status: "error", message: `Toplantı eklenemedi: ${error.message}` }
+  }
+
+  revalidateMeetings()
+  return { status: "success", message: "Toplantı eklendi." }
+}
+
+export async function deleteMeeting(meetingId: string): Promise<ActionState> {
+  await requireTeamRole()
+
+  const { error } = await supabase.from("panel_meetings").delete().eq("id", meetingId)
+  if (error) {
+    return { status: "error", message: `Toplantı silinemedi: ${error.message}` }
+  }
+
+  revalidateMeetings()
+  return { status: "success", message: "Toplantı silindi." }
+}
+
+const messageSchema = z.object({
+  body: z.string().trim().min(1, "Mesaj boş olamaz").max(1000),
+})
+
+export async function sendPanelMessage(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const role = await requireTeamRole()
+
+  const parsed = messageSchema.safeParse({ body: formData.get("body") })
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Formda hatalar var.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { error } = await supabase.from("panel_messages").insert({
+    author: role,
+    body: parsed.data.body,
+  })
+
+  if (error) {
+    return { status: "error", message: `Mesaj gönderilemedi: ${error.message}` }
+  }
+
+  // Sohbet widget'ı panel/layout.tsx'te fetch ediliyor — "layout" tipiyle
+  // revalidate edilmezse, o segment yeniden render edilmez ve mesaj görünmez.
+  revalidatePath("/panel", "layout")
+  return { status: "success" }
 }

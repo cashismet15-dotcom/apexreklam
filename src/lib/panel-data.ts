@@ -15,6 +15,8 @@ import type {
   ClientTaskWithCustomer,
   Customer,
   Payment,
+  PanelMeeting,
+  PanelMessage,
   PanelNote,
   TaskAttachmentKind,
   TaskStats,
@@ -251,4 +253,70 @@ export async function getPanelNotes(): Promise<PanelNote[]> {
 
   if (error) fail("Notlar alınamadı", error)
   return data
+}
+
+/** Bir kişinin (owner dahil, "viewer" ayrıcalığı olmadan) görev istatistikleri — Arkadaşlar sayfası için. */
+export async function getTaskStatsForRole(role: TeamMemberRole): Promise<TaskStats> {
+  const { data, error } = await supabase
+    .from("client_tasks")
+    .select("status, category, completed_at, due_date")
+    .eq("assigned_to", role)
+
+  if (error) fail("İstatistikler alınamadı", error)
+
+  const tasks = data ?? []
+  const today = todayIso()
+  const monthPrefix = today.slice(0, 7)
+
+  const completed = tasks.filter((t) => t.status === "tamamlandi")
+  const completedThisMonth = completed.filter(
+    (t) => t.completed_at && t.completed_at.slice(0, 7) === monthPrefix
+  ).length
+  const openCount = tasks.filter((t) => t.status !== "tamamlandi").length
+  const overdueCount = tasks.filter(
+    (t) => t.status !== "tamamlandi" && t.due_date && t.due_date < today
+  ).length
+
+  const byCategory: Record<ClientTaskCategory, number> = { ...EMPTY_CATEGORY_COUNTS }
+  for (const t of completed) {
+    byCategory[t.category as ClientTaskCategory] += 1
+  }
+
+  return { completedThisMonth, completedTotal: completed.length, openCount, overdueCount, byCategory }
+}
+
+/** Yaklaşan toplantılar — dashboard widget'ı için, en yakın önce. */
+export async function getUpcomingMeetings(limit = 5): Promise<PanelMeeting[]> {
+  const { data, error } = await supabase
+    .from("panel_meetings")
+    .select("*")
+    .gte("meeting_at", new Date().toISOString())
+    .order("meeting_at", { ascending: true })
+    .limit(limit)
+
+  if (error) fail("Toplantılar alınamadı", error)
+  return data
+}
+
+/** Tüm toplantılar (geçmiş dahil) — Toplantılar sayfası için, en yeni/yakın önce. */
+export async function getAllMeetings(): Promise<PanelMeeting[]> {
+  const { data, error } = await supabase
+    .from("panel_meetings")
+    .select("*")
+    .order("meeting_at", { ascending: false })
+
+  if (error) fail("Toplantılar alınamadı", error)
+  return data
+}
+
+/** Ekip sohbeti: son N mesaj, kronolojik sırayla (en eski önce). */
+export async function getRecentMessages(limit = 50): Promise<PanelMessage[]> {
+  const { data, error } = await supabase
+    .from("panel_messages")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) fail("Mesajlar alınamadı", error)
+  return [...(data ?? [])].reverse()
 }

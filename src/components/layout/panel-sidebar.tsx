@@ -6,10 +6,12 @@ import {
   BarChart3,
   Bug,
   Building2,
+  CalendarClock,
   FileText,
   LayoutDashboard,
   StickyNote,
   UserRound,
+  Users,
   Video,
 } from "lucide-react"
 
@@ -32,28 +34,36 @@ import type { TeamMemberRole } from "@/lib/types"
 const menu = [
   { title: "Dashboard", href: "/panel", icon: LayoutDashboard },
   { title: "Şirketler", href: "/panel/sirketler", icon: Building2 },
+  { title: "Toplantılar", href: "/panel/toplantilar", icon: CalendarClock },
   { title: "Sunumlar", href: "/panel/sunumlar", icon: FileText },
   { title: "Video Montajları", href: "/panel/videolar", icon: Video },
   { title: "Reklam Raporları", href: "/panel/raporlar", icon: BarChart3 },
   { title: "Hata Takibi", href: "/panel/hatalar", icon: Bug },
   { title: "Notlar", href: "/panel/notlar", icon: StickyNote },
+  { title: "Arkadaşlar", href: "/panel/arkadaslar", icon: Users },
   { title: "Profil", href: "/panel/profil", icon: UserRound },
 ]
 
 export function PanelSidebar({ role }: { role: TeamMemberRole }) {
   const pathname = usePathname()
   const label = TEAM_MEMBER_LABEL[role]
+  // Ekip (huseyin/batuhan) yalnızca /panel ve /gorevler'e erişebiliyor — "/" onları
+  // zaten proxy'de geri /panel'e atar. Owner (İsmet) ise tüm modüllere erişiyor,
+  // o yüzden logo ana sayfaya çıksın — Panel'e girip çıkabilsin.
+  const headerHref = role === "owner" ? "/" : "/panel"
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
-        <Link href="/panel" className="flex items-center gap-2 px-1">
+        <Link href={headerHref} className="flex items-center gap-2 px-1">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
             A
           </div>
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Panel</span>
-            <span className="text-xs text-muted-foreground">Ekip CRM&apos;i</span>
+            <span className="text-xs text-muted-foreground">
+              {role === "owner" ? "Ana sayfaya dön" : "Ekip CRM'i"}
+            </span>
           </div>
         </Link>
       </SidebarHeader>

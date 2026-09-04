@@ -1,14 +1,17 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert } from "lucide-react"
 
 import { PageHeader } from "@/components/layout/page-header"
+import { AddMeetingButton } from "@/components/panel/add-meeting-button"
+import { MeetingList } from "@/components/panel/meeting-list"
 import { OpenTasksList } from "@/components/panel/open-tasks-list"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { getSessionRole } from "@/lib/auth-role"
 import { todayIso } from "@/lib/daily-tracker"
 import { TEAM_MEMBER_LABEL, toTeamRole } from "@/lib/panel"
-import { getOpenTasksForViewer, getTaskStatsForViewer } from "@/lib/panel-data"
+import { getOpenTasksForViewer, getTaskStatsForViewer, getUpcomingMeetings } from "@/lib/panel-data"
 
 function motivationMessage(completedThisMonth: number, overdueCount: number): string {
   if (overdueCount > 0) {
@@ -28,12 +31,14 @@ export default async function PanelDashboardPage() {
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const [tasks, stats] = await Promise.all([
+  const [tasks, stats, meetings] = await Promise.all([
     getOpenTasksForViewer(role),
     getTaskStatsForViewer(role),
+    getUpcomingMeetings(),
   ])
 
   const today = todayIso()
+  const nowIso = new Date().toISOString()
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,6 +78,22 @@ export default async function PanelDashboardPage() {
           icon={stats.overdueCount > 0 ? TriangleAlert : Clock}
           tone={stats.overdueCount > 0 ? "red" : "amber"}
         />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">Yaklaşan Toplantılar</h2>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/panel/toplantilar"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Tümünü gör
+            </Link>
+            <AddMeetingButton defaultParticipant={role} />
+          </div>
+        </div>
+        <MeetingList meetings={meetings} nowIso={nowIso} emptyLabel="Yaklaşan toplantı yok." />
       </div>
 
       <div className="flex flex-col gap-3">

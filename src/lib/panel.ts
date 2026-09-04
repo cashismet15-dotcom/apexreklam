@@ -174,3 +174,50 @@ export function groupNotesByDay(notes: PanelNote[]): NoteDayGroup[] {
       notes: dayNotes,
     }))
 }
+
+// Türkiye sabit UTC+3 kullanır (yaz saati uygulaması yok) — sunucu hangi saat
+// diliminde çalışırsa çalışsın (Vercel varsayılan UTC) saatlerin doğru
+// görünmesi için tüm saat gösterimlerinde bunu açıkça belirtiyoruz.
+const TR_TIME_ZONE = "Europe/Istanbul"
+
+const timeFormatter = new Intl.DateTimeFormat("tr-TR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: TR_TIME_ZONE,
+})
+
+/** "14:32" gibi, Türkiye saatine göre — timestamptz'den. */
+export function formatTimeTr(iso: string): string {
+  return timeFormatter.format(new Date(iso))
+}
+
+const meetingDateTimeFormatter = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: TR_TIME_ZONE,
+})
+
+/** "10 Eylül 14:30" gibi — toplantı tarihi/saati için. */
+export function formatMeetingDateTime(iso: string): string {
+  return meetingDateTimeFormatter.format(new Date(iso))
+}
+
+/**
+ * Bir <input type="datetime-local"> değerini ("2026-09-10T14:30", saat dilimsiz,
+ * kullanıcının yerel saatiyle) Türkiye saati (+03:00) kabul edip doğru bir ISO
+ * timestamp'e çevirir — sunucunun kendi saat dilimine bağlı kalmadan.
+ */
+export function localDateTimeToIso(value: string): string | null {
+  const match = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.exec(value)
+  if (!match) return null
+  const d = new Date(`${match[0]}:00+03:00`)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
+/** Bir toplantı hâlâ gelecekteyse (henüz geçmediyse) true. */
+export function isMeetingUpcoming(meeting: { meeting_at: string }, nowIso: string): boolean {
+  return meeting.meeting_at >= nowIso
+}

@@ -42,33 +42,51 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
           <DialogTitle>{customer ? "Müşteriyi Düzenle" : "Müşteri Ekle"}</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="company_name">Firma Adı</Label>
-            <Input
-              id="company_name"
-              name="company_name"
-              defaultValue={customer?.company_name}
-              required
-            />
-            <FieldError errors={state.fieldErrors?.company_name} />
-          </div>
+          {customer ? (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="company_name">Firma Adı</Label>
+                <Input
+                  id="company_name"
+                  name="company_name"
+                  defaultValue={customer.company_name}
+                  required
+                />
+                <FieldError errors={state.fieldErrors?.company_name} />
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact_name">Yetkili</Label>
-            <Input
-              id="contact_name"
-              name="contact_name"
-              defaultValue={customer?.contact_name}
-              required
-            />
-            <FieldError errors={state.fieldErrors?.contact_name} />
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="contact_name">Yetkili</Label>
+                <Input
+                  id="contact_name"
+                  name="contact_name"
+                  defaultValue={customer.contact_name}
+                  required
+                />
+                <FieldError errors={state.fieldErrors?.contact_name} />
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="phone">Telefon</Label>
-            <Input id="phone" name="phone" defaultValue={customer?.phone} required />
-            <FieldError errors={state.fieldErrors?.phone} />
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="phone">Telefon</Label>
+                <Input id="phone" name="phone" defaultValue={customer.phone} required />
+                <FieldError errors={state.fieldErrors?.phone} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="name">İsim (opsiyonel)</Label>
+                <Input id="name" name="name" placeholder="Bilmiyorsan boş bırak" />
+                <FieldError errors={state.fieldErrors?.name} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="phone">Telefon</Label>
+                <Input id="phone" name="phone" placeholder="05xx xxx xx xx" required />
+                <FieldError errors={state.fieldErrors?.phone} />
+              </div>
+            </>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="notes">Not (opsiyonel)</Label>
