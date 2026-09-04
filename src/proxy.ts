@@ -25,6 +25,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/taseron", request.url))
   }
 
+  if (session.role === "huseyin" || session.role === "batuhan") {
+    const allowed = pathname.startsWith("/panel") || pathname.startsWith("/gorevler")
+    if (!allowed) {
+      return NextResponse.redirect(new URL("/panel", request.url))
+    }
+  }
+
   return NextResponse.next()
 }
 

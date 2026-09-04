@@ -1,7 +1,9 @@
 import Link from "next/link"
 import {
+  Briefcase,
   Clapperboard,
   Droplets,
+  ListChecks,
   Megaphone,
   MessageCircle,
   Sparkles,
@@ -36,6 +38,18 @@ const apps = [
     description: "Modun, ilkelerin ve telkinlerin — girdikçe büyüyen ciro sayacı.",
     href: "/manifest",
     icon: Sparkles,
+  },
+  {
+    title: "Günlük Görevler",
+    description: "Personel ve senin için günlük görev listesi, kutucukla işaretle.",
+    href: "/gorevler",
+    icon: ListChecks,
+  },
+  {
+    title: "Panel",
+    description: "Ekip CRM'i — şirket kartları, görev atama ve Meta reklam raporu.",
+    href: "/panel",
+    icon: Briefcase,
   },
   {
     title: "Ufo Temizlik",

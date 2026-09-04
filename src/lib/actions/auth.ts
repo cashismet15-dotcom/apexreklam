@@ -39,6 +39,20 @@ export async function login(_prevState: ActionState, formData: FormData): Promis
     passcode === process.env.APP_YAKAMOZ_PASSCODE
   ) {
     session = { role: "yakamoz" }
+  } else if (
+    username &&
+    passcode &&
+    username === process.env.APP_HUSEYIN_USERNAME &&
+    passcode === process.env.APP_HUSEYIN_PASSCODE
+  ) {
+    session = { role: "huseyin" }
+  } else if (
+    username &&
+    passcode &&
+    username === process.env.APP_BATUHAN_USERNAME &&
+    passcode === process.env.APP_BATUHAN_PASSCODE
+  ) {
+    session = { role: "batuhan" }
   } else if (username && passcode) {
     const { data: company } = await supabase
       .from("partner_companies")
@@ -75,6 +89,12 @@ export async function login(_prevState: ActionState, formData: FormData): Promis
 
   if (session.role === "partner") {
     redirect(isSafeNextPath(next) && next.startsWith("/taseron") ? next : "/taseron")
+  }
+
+  if (session.role === "huseyin" || session.role === "batuhan") {
+    const allowed =
+      isSafeNextPath(next) && (next.startsWith("/panel") || next.startsWith("/gorevler"))
+    redirect(allowed ? next : "/panel")
   }
 
   redirect(isSafeNextPath(next) ? next : "/")

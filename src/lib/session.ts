@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
-export type AppRole = "owner" | "ufo" | "partner" | "yakamoz"
+export type AppRole = "owner" | "ufo" | "partner" | "yakamoz" | "huseyin" | "batuhan"
 
 export interface Session {
   role: AppRole
@@ -32,7 +32,13 @@ export function verifySessionValue(value?: string | null): Session | null {
   if (!payload) return null
 
   let session: Session
-  if (payload === "owner" || payload === "ufo" || payload === "yakamoz") {
+  if (
+    payload === "owner" ||
+    payload === "ufo" ||
+    payload === "yakamoz" ||
+    payload === "huseyin" ||
+    payload === "batuhan"
+  ) {
     session = { role: payload }
   } else if (payload.startsWith("partner:")) {
     const companyId = payload.slice("partner:".length)
