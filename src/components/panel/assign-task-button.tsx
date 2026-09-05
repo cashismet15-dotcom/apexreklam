@@ -44,6 +44,7 @@ export function AssignTaskButton({
         customerId={null}
         defaultAssignee={defaultAssignee}
         defaultTitle={toTaskTitle(sourceText)}
+        defaultDurationDays={0}
       />
     </>
   )

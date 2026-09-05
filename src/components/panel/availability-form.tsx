@@ -39,10 +39,21 @@ export function AvailabilityForm({ availability }: { availability: BookingAvaila
                     <input
                       type="checkbox"
                       name={`is_open_${row.weekday}`}
-                      defaultChecked={row.is_open}
-                      onChange={(e) =>
-                        setOpenState((prev) => ({ ...prev, [row.weekday]: e.target.checked }))
-                      }
+                      checked={isOpen}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                        if (!next) {
+                          const dayLabel = WEEKDAY_LABELS[row.weekday]
+                          const ok = window.confirm(
+                            `${dayLabel} gününü kapatmak HER HAFTA bu günü kalıcı olarak kapatır.\n\n` +
+                              `Sadece belirli bir tarih için (ör. sadece bu haftaki ${dayLabel}) kapatmak istiyorsanız ` +
+                              `İptal'e basın ve aşağıdaki "Kapalı Günler"den o tarihi ekleyin.\n\n` +
+                              `Yine de her hafta ${dayLabel} günü kalıcı olarak kapalı olsun mu?`
+                          )
+                          if (!ok) return
+                        }
+                        setOpenState((prev) => ({ ...prev, [row.weekday]: next }))
+                      }}
                       className="size-4 rounded border-input accent-primary"
                     />
                     {WEEKDAY_LABELS[row.weekday]}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect } from "react"
+import { useActionState, useEffect, useRef } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -42,6 +42,11 @@ export function TaskFormDialog({
 }: TaskFormDialogProps) {
   const action = createClientTask.bind(null, customerId)
   const [state, formAction, isPending] = useActionState(action, initialActionState)
+  const durationRef = useRef<HTMLInputElement>(null)
+
+  function setDuration(days: number) {
+    if (durationRef.current) durationRef.current.value = String(days)
+  }
 
   useEffect(() => {
     if (state.status === "success") onOpenChange(false)
@@ -109,14 +114,24 @@ export function TaskFormDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="duration_days">Kaç Gün Süre Veriliyor? (opsiyonel)</Label>
-            <Input
-              id="duration_days"
-              name="duration_days"
-              type="number"
-              min={0}
-              placeholder="örn. 7"
-              defaultValue={defaultDurationDays}
-            />
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setDuration(0)}>
+                Bugün
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDuration(1)}>
+                Yarın
+              </Button>
+              <Input
+                ref={durationRef}
+                id="duration_days"
+                name="duration_days"
+                type="number"
+                min={0}
+                placeholder="ya da gün sayısı gir"
+                defaultValue={defaultDurationDays}
+                className="flex-1"
+              />
+            </div>
             <FieldError errors={state.fieldErrors?.duration_days} />
           </div>
 
