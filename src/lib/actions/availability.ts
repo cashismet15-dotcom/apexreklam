@@ -94,6 +94,37 @@ export async function addBlockedDate(_prevState: ActionState, formData: FormData
   return { status: "success" }
 }
 
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+
+/** Hızlı kapat/aç: tarih yazmadan tek tıkla bir günü kapalı işaretler ya da geri açar. */
+export async function toggleBlockedDate(dateStr: string, blocked: boolean): Promise<ActionState> {
+  const teamMember = await requireTeamRole()
+
+  if (!dateRegex.test(dateStr)) {
+    return { status: "error", message: "Geçersiz tarih." }
+  }
+
+  if (blocked) {
+    const { error } = await supabase
+      .from("booking_blocked_dates")
+      .upsert(
+        { team_member: teamMember, blocked_date: dateStr },
+        { onConflict: "team_member,blocked_date" }
+      )
+    if (error) return { status: "error", message: error.message }
+  } else {
+    const { error } = await supabase
+      .from("booking_blocked_dates")
+      .delete()
+      .eq("team_member", teamMember)
+      .eq("blocked_date", dateStr)
+    if (error) return { status: "error", message: error.message }
+  }
+
+  revalidateAvailability()
+  return { status: "success" }
+}
+
 /** Sadece kendi eklediği kapalı günü silebilir — team_member eşleşmesi şart. */
 export async function deleteBlockedDate(id: string): Promise<ActionState> {
   const teamMember = await requireTeamRole()
