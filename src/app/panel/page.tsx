@@ -7,7 +7,7 @@ import { AddMeetingButton } from "@/components/panel/add-meeting-button"
 import { AddTaskButton } from "@/components/panel/add-task-button"
 import { MeetingList } from "@/components/panel/meeting-list"
 import { NoteList } from "@/components/panel/note-list"
-import { TodayTasks } from "@/components/panel/today-tasks"
+import { TasksByDay } from "@/components/panel/tasks-by-day"
 import { Card, CardContent } from "@/components/ui/card"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { getSessionRole } from "@/lib/auth-role"
@@ -147,7 +147,7 @@ export default async function PanelDashboardPage() {
           </h2>
           <AddTaskButton defaultAssignee={role} />
         </div>
-        <TodayTasks tasks={tasks} todayIso={today} />
+        <TasksByDay tasks={tasks} todayIso={today} />
       </div>
     </div>
   )

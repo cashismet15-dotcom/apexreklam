@@ -334,23 +334,45 @@ export async function getAllMeetings(): Promise<PanelMeeting[]> {
   return data
 }
 
-/** Müsaitlik: haftalık çalışma saatleri, 7 satır (weekday 0-6), sıralı. */
+function defaultAvailability(): BookingAvailability[] {
+  return Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    is_open: true,
+    start_time: "09:00",
+    end_time: "19:00",
+    updated_at: "",
+  }))
+}
+
+/** Postgrest'in "tablo yok" hata kodu — migration henüz çalıştırılmadıysa. */
+function isMissingTable(error: { code?: string }): boolean {
+  return error.code === "PGRST205"
+}
+
+/** Müsaitlik: haftalık çalışma saatleri, 7 satır (weekday 0-6), sıralı. Migration henüz
+ *  çalıştırılmadıysa (tablo yoksa) sayfa çökmesin diye varsayılan saatlerle devam eder. */
 export async function getAvailability(): Promise<BookingAvailability[]> {
   const { data, error } = await supabase
     .from("booking_availability")
     .select("*")
     .order("weekday", { ascending: true })
 
-  if (error) fail("Müsaitlik alınamadı", error)
+  if (error) {
+    if (isMissingTable(error)) return defaultAvailability()
+    fail("Müsaitlik alınamadı", error)
+  }
   return data
 }
 
-/** Müsaitlik: tamamen kapalı işaretlenen günler, en yakın tarih önce. */
+/** Müsaitlik: tamamen kapalı işaretlenen günler, en yakın tarih önce. Migration henüz
+ *  çalıştırılmadıysa (tablo yoksa) boş liste döner. */
 export async function getBlockedDates(): Promise<BookingBlockedDate[]> {
   const { data, error } = await supabase
     .from("booking_blocked_dates")
     .select("*")
     .order("blocked_date", { ascending: true })
+
+  if (error && isMissingTable(error)) return []
 
   if (error) fail("Kapalı günler alınamadı", error)
   return data
