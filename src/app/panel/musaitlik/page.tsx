@@ -30,11 +30,20 @@ export default async function PanelMusaitlikPage() {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Haftalık Çalışma Saatleri</h2>
+        <p className="text-xs text-muted-foreground">
+          Bu ayarlar her hafta tekrarlanır — bir günü kapalı yaparsan, o gün her hafta kapalı
+          sayılır. Sadece belirli bir tarihte (ör. bu hafta çarşamba) müsait değilsen, bunun
+          yerine aşağıdaki <strong>Kapalı Günler</strong>&apos;i kullan.
+        </p>
         <AvailabilityForm availability={availability} />
       </div>
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Kapalı Günler</h2>
+        <p className="text-xs text-muted-foreground">
+          Tek seferlik istisnalar için — sadece eklediğin tarihi kapatır, diğer haftaları
+          etkilemez.
+        </p>
         <BlockedDates dates={blockedDates} />
       </div>
     </div>
