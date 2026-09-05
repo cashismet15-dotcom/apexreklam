@@ -40,9 +40,9 @@ export default async function PanelNotlarPage() {
             <CardTitle className="text-sm">Genel Notlar</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <p className="text-xs text-muted-foreground">Herkes görür, herkes yazabilir.</p>
-            <AddNoteForm isPrivate={false} placeholder="Ekiple paylaşılacak bir not yaz..." />
-            <Separator />
+            <p className="text-xs text-muted-foreground">
+              Herkes görür — eklemek için Dashboard&apos;u kullan.
+            </p>
             <NoteList groups={generalGroups} currentRole={role} emptyLabel="Henüz genel not yok." />
           </CardContent>
         </Card>

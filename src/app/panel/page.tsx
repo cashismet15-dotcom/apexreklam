@@ -4,6 +4,7 @@ import { CalendarCheck, CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert, 
 
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMeetingButton } from "@/components/panel/add-meeting-button"
+import { AddNoteForm } from "@/components/panel/add-note-form"
 import { MeetingList } from "@/components/panel/meeting-list"
 import { NoteList } from "@/components/panel/note-list"
 import { TasksByDay } from "@/components/panel/tasks-by-day"
@@ -133,7 +134,8 @@ export default async function PanelDashboardPage() {
           </Link>
         </div>
         <Card>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
+            <AddNoteForm isPrivate={false} placeholder="Ekiple paylaşılacak bir not yaz..." />
             <NoteList groups={noteGroups} currentRole={role} emptyLabel="Henüz genel not yok." />
           </CardContent>
         </Card>
