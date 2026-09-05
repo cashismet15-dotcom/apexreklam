@@ -29,12 +29,13 @@ const availabilitySchema = z.object({
   end_time: z.string().regex(timeRegex, "Geçerli bir saat girin"),
 })
 
-/** 7 gün için tek seferde kaydeder — formdan gelen günlerin hepsini upsert eder. */
+/** 7 gün için tek seferde kaydeder — formdan gelen günlerin hepsini upsert eder.
+ *  Her zaman oturum sahibinin (owner/huseyin/batuhan) kendi satırlarını günceller. */
 export async function updateAvailability(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await requireTeamRole()
+  const teamMember = await requireTeamRole()
 
   const rows = []
   for (let weekday = 0; weekday <= 6; weekday++) {
@@ -50,10 +51,12 @@ export async function updateAvailability(
     if (parsed.data.is_open && parsed.data.start_time >= parsed.data.end_time) {
       return { status: "error", message: "Başlangıç saati bitiş saatinden önce olmalı." }
     }
-    rows.push(parsed.data)
+    rows.push({ ...parsed.data, team_member: teamMember })
   }
 
-  const { error } = await supabase.from("booking_availability").upsert(rows, { onConflict: "weekday" })
+  const { error } = await supabase
+    .from("booking_availability")
+    .upsert(rows, { onConflict: "team_member,weekday" })
   if (error) return { status: "error", message: error.message }
 
   revalidateAvailability()
@@ -66,7 +69,7 @@ const blockedDateSchema = z.object({
 })
 
 export async function addBlockedDate(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeamRole()
+  const teamMember = await requireTeamRole()
 
   const parsed = blockedDateSchema.safeParse({
     blocked_date: formData.get("blocked_date"),
@@ -81,6 +84,7 @@ export async function addBlockedDate(_prevState: ActionState, formData: FormData
   }
 
   const { error } = await supabase.from("booking_blocked_dates").insert({
+    team_member: teamMember,
     blocked_date: parsed.data.blocked_date,
     note: parsed.data.note || null,
   })
@@ -90,10 +94,15 @@ export async function addBlockedDate(_prevState: ActionState, formData: FormData
   return { status: "success" }
 }
 
+/** Sadece kendi eklediği kapalı günü silebilir — team_member eşleşmesi şart. */
 export async function deleteBlockedDate(id: string): Promise<ActionState> {
-  await requireTeamRole()
+  const teamMember = await requireTeamRole()
 
-  const { error } = await supabase.from("booking_blocked_dates").delete().eq("id", id)
+  const { error } = await supabase
+    .from("booking_blocked_dates")
+    .delete()
+    .eq("id", id)
+    .eq("team_member", teamMember)
   if (error) {
     return { status: "error", message: `Silinemedi: ${error.message}` }
   }

@@ -334,8 +334,9 @@ export async function getAllMeetings(): Promise<PanelMeeting[]> {
   return data
 }
 
-function defaultAvailability(): BookingAvailability[] {
+function defaultAvailability(teamMember: TeamMemberRole): BookingAvailability[] {
   return Array.from({ length: 7 }, (_, weekday) => ({
+    team_member: teamMember,
     weekday,
     is_open: true,
     start_time: "09:00",
@@ -349,27 +350,30 @@ function isMissingTable(error: { code?: string }): boolean {
   return error.code === "PGRST205"
 }
 
-/** Müsaitlik: haftalık çalışma saatleri, 7 satır (weekday 0-6), sıralı. Migration henüz
- *  çalıştırılmadıysa (tablo yoksa) sayfa çökmesin diye varsayılan saatlerle devam eder. */
-export async function getAvailability(): Promise<BookingAvailability[]> {
+/** Müsaitlik: bir ekip üyesinin kendi haftalık çalışma saatleri, 7 satır (weekday 0-6),
+ *  sıralı. Migration henüz çalıştırılmadıysa (tablo yoksa) sayfa çökmesin diye varsayılan
+ *  saatlerle devam eder. */
+export async function getAvailability(teamMember: TeamMemberRole): Promise<BookingAvailability[]> {
   const { data, error } = await supabase
     .from("booking_availability")
     .select("*")
+    .eq("team_member", teamMember)
     .order("weekday", { ascending: true })
 
   if (error) {
-    if (isMissingTable(error)) return defaultAvailability()
+    if (isMissingTable(error)) return defaultAvailability(teamMember)
     fail("Müsaitlik alınamadı", error)
   }
   return data
 }
 
-/** Müsaitlik: tamamen kapalı işaretlenen günler, en yakın tarih önce. Migration henüz
- *  çalıştırılmadıysa (tablo yoksa) boş liste döner. */
-export async function getBlockedDates(): Promise<BookingBlockedDate[]> {
+/** Müsaitlik: bir ekip üyesinin tamamen kapalı işaretlediği günler, en yakın tarih önce.
+ *  Migration henüz çalıştırılmadıysa (tablo yoksa) boş liste döner. */
+export async function getBlockedDates(teamMember: TeamMemberRole): Promise<BookingBlockedDate[]> {
   const { data, error } = await supabase
     .from("booking_blocked_dates")
     .select("*")
+    .eq("team_member", teamMember)
     .order("blocked_date", { ascending: true })
 
   if (error && isMissingTable(error)) return []

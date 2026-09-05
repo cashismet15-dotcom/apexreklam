@@ -12,13 +12,20 @@ export default async function PanelMusaitlikPage() {
   const role = session ? toTeamRole(session.role) : null
   if (!role) notFound()
 
-  const [availability, blockedDates] = await Promise.all([getAvailability(), getBlockedDates()])
+  const [availability, blockedDates] = await Promise.all([
+    getAvailability(role),
+    getBlockedDates(role),
+  ])
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Müsaitlik"
-        description="apexhaliyikama.com.tr'deki randevu takvimi bu ayarlara göre çalışır."
+        description={
+          role === "owner"
+            ? "apexhaliyikama.com.tr'deki randevu takvimi bu ayarlara göre çalışır."
+            : "Kendi müsaitlik ayarların — apexhaliyikama.com.tr'deki randevu takvimini etkilemez, sadece İsmet'inki etkiler."
+        }
       />
 
       <div className="flex flex-col gap-2">

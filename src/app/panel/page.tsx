@@ -4,7 +4,6 @@ import { CalendarCheck, CheckCircle2, Clock, ListTodo, Sparkles, TriangleAlert, 
 
 import { PageHeader } from "@/components/layout/page-header"
 import { AddMeetingButton } from "@/components/panel/add-meeting-button"
-import { AddTaskButton } from "@/components/panel/add-task-button"
 import { MeetingList } from "@/components/panel/meeting-list"
 import { NoteList } from "@/components/panel/note-list"
 import { TasksByDay } from "@/components/panel/tasks-by-day"
@@ -141,13 +140,10 @@ export default async function PanelDashboardPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            {role === "owner" ? "Açık Görevler" : "Görevlerim"}
-          </h2>
-          <AddTaskButton defaultAssignee={role} />
-        </div>
-        <TasksByDay tasks={tasks} todayIso={today} />
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          {role === "owner" ? "Açık Görevler" : "Görevlerim"}
+        </h2>
+        <TasksByDay tasks={tasks} todayIso={today} role={role} />
       </div>
     </div>
   )

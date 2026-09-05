@@ -1,11 +1,13 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { AlertTriangle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AddTaskButton } from "@/components/panel/add-task-button"
 import { TaskStatusControl } from "@/components/panel/task-status-control"
 import { TASK_CATEGORY_LABEL } from "@/lib/panel"
-import type { ClientTaskWithCustomer } from "@/lib/types"
+import type { ClientTaskWithCustomer, TeamMemberRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 /** `dueIso` bugünden kaç gün uzakta — negatifse gecikmiş demektir. */
@@ -64,18 +66,21 @@ function TaskColumn({
   tasks,
   todayIso,
   tone,
+  headerAction,
 }: {
   title: string
   tasks: ClientTaskWithCustomer[]
   todayIso: string
   tone?: "red"
+  headerAction?: ReactNode
 }) {
   return (
     <Card className="gap-0 py-0">
-      <CardHeader className="border-b py-2.5">
+      <CardHeader className="flex items-center justify-between border-b py-2.5">
         <CardTitle className={cn("text-sm", tone === "red" && "text-red-600")}>
           {title} <span className="font-normal text-muted-foreground">({tasks.length})</span>
         </CardTitle>
+        {headerAction}
       </CardHeader>
       <CardContent className="flex max-h-96 flex-col overflow-y-auto p-0">
         {tasks.length === 0 ? (
@@ -97,9 +102,11 @@ function TaskColumn({
 export function TasksByDay({
   tasks,
   todayIso,
+  role,
 }: {
   tasks: ClientTaskWithCustomer[]
   todayIso: string
+  role: TeamMemberRole
 }) {
   const overdue = tasks.filter((t) => t.due_date && t.due_date < todayIso)
   const dueToday = tasks.filter((t) => !t.due_date || t.due_date === todayIso)
@@ -108,8 +115,18 @@ export function TasksByDay({
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
       <TaskColumn title="Dün" tasks={overdue} todayIso={todayIso} tone="red" />
-      <TaskColumn title="Bugün" tasks={dueToday} todayIso={todayIso} />
-      <TaskColumn title="Yarın" tasks={upcoming} todayIso={todayIso} />
+      <TaskColumn
+        title="Bugün"
+        tasks={dueToday}
+        todayIso={todayIso}
+        headerAction={<AddTaskButton defaultAssignee={role} defaultDurationDays={0} label="Ekle" />}
+      />
+      <TaskColumn
+        title="Yarın"
+        tasks={upcoming}
+        todayIso={todayIso}
+        headerAction={<AddTaskButton defaultAssignee={role} defaultDurationDays={1} label="Ekle" />}
+      />
     </div>
   )
 }

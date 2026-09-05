@@ -28,6 +28,8 @@ interface TaskFormDialogProps {
   defaultAssignee: TeamMemberRole
   /** Bir nottan/mesajdan "Görev Ata" ile açıldığında başlığı önceden doldurur. */
   defaultTitle?: string
+  /** "Bugün"den açılırsa 0, "Yarın"dan açılırsa 1 — süre alanını önceden doldurur. */
+  defaultDurationDays?: number
 }
 
 export function TaskFormDialog({
@@ -36,6 +38,7 @@ export function TaskFormDialog({
   customerId,
   defaultAssignee,
   defaultTitle,
+  defaultDurationDays,
 }: TaskFormDialogProps) {
   const action = createClientTask.bind(null, customerId)
   const [state, formAction, isPending] = useActionState(action, initialActionState)
@@ -106,7 +109,14 @@ export function TaskFormDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="duration_days">Kaç Gün Süre Veriliyor? (opsiyonel)</Label>
-            <Input id="duration_days" name="duration_days" type="number" min={0} placeholder="örn. 7" />
+            <Input
+              id="duration_days"
+              name="duration_days"
+              type="number"
+              min={0}
+              placeholder="örn. 7"
+              defaultValue={defaultDurationDays}
+            />
             <FieldError errors={state.fieldErrors?.duration_days} />
           </div>
 
