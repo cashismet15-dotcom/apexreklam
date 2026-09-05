@@ -105,9 +105,9 @@ export function TaskFormDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="due_date">Son Tarih (opsiyonel)</Label>
-            <Input id="due_date" name="due_date" type="date" />
-            <FieldError errors={state.fieldErrors?.due_date} />
+            <Label htmlFor="duration_days">Kaç Gün Süre Veriliyor? (opsiyonel)</Label>
+            <Input id="duration_days" name="duration_days" type="number" min={0} placeholder="örn. 7" />
+            <FieldError errors={state.fieldErrors?.duration_days} />
           </div>
 
           {state.status === "error" && !state.fieldErrors ? (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 import { getSessionRole } from "@/lib/auth-role"
+import { addDaysIso, todayIso } from "@/lib/daily-tracker"
 import {
   PLACEHOLDER_MONTHLY_FEE,
   PLACEHOLDER_PAYMENT_DAY,
@@ -51,7 +52,9 @@ const taskSchema = z.object({
   description: z.string().trim().max(4000).optional().or(z.literal("")),
   category: z.enum(["video", "reklam", "yapay_zeka", "diger"]),
   assigned_to: z.enum(["owner", "huseyin", "batuhan"]),
-  due_date: z.string().trim().optional().or(z.literal("")),
+  // Son tarihi doğrudan seçtirmek yerine "kaç gün süre veriliyor" diye soruyoruz —
+  // due_date bugünün tarihine bu kadar gün eklenerek hesaplanır.
+  duration_days: z.coerce.number().int().min(0).optional(),
 })
 
 /** customerId null ise genel/dahili bir görev oluşturur — belirli bir müşteriye bağlı değil. */
@@ -62,12 +65,13 @@ export async function createClientTask(
 ): Promise<ActionState> {
   const role = await requireTeamRole()
 
+  const durationRaw = formData.get("duration_days")
   const parsed = taskSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
     category: formData.get("category"),
     assigned_to: formData.get("assigned_to"),
-    due_date: formData.get("due_date"),
+    duration_days: durationRaw ? durationRaw : undefined,
   })
   if (!parsed.success) {
     return {
@@ -77,6 +81,9 @@ export async function createClientTask(
     }
   }
 
+  const dueDate =
+    parsed.data.duration_days !== undefined ? addDaysIso(todayIso(), parsed.data.duration_days) : null
+
   const { error } = await supabase.from("client_tasks").insert({
     customer_id: customerId,
     title: parsed.data.title,
@@ -84,7 +91,7 @@ export async function createClientTask(
     category: parsed.data.category,
     assigned_to: parsed.data.assigned_to,
     created_by: role,
-    due_date: parsed.data.due_date || null,
+    due_date: dueDate,
   })
 
   if (error) {
