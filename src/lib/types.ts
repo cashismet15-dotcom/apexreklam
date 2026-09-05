@@ -185,6 +185,23 @@ export interface AttachmentWithContext extends ClientTaskAttachment {
   customerName: string
 }
 
+/** Panel modülü: Müsaitlik — apexhaliyikama.com.tr randevu takviminin okuduğu haftalık çalışma saatleri. weekday: JS Date.getDay() ile birebir (0=Pazar...6=Cumartesi). */
+export interface BookingAvailability {
+  weekday: number
+  is_open: boolean
+  start_time: string
+  end_time: string
+  updated_at: string
+}
+
+/** Panel modülü: Müsaitlik — tamamen kapalı işaretlenen belirli bir gün (tatil, izin vb.). */
+export interface BookingBlockedDate {
+  id: string
+  blocked_date: string
+  note: string | null
+  created_at: string
+}
+
 /** Panel modülü: dashboard/profil'deki motivasyon istatistikleri (görevlerim özeti). */
 export interface TaskStats {
   completedThisWeek: number

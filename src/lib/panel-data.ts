@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase"
 import type {
   AiBugWithCustomer,
   AttachmentWithContext,
+  BookingAvailability,
+  BookingBlockedDate,
   ClientAdReport,
   ClientAdReportWithCustomer,
   ClientTaskAttachment,
@@ -329,6 +331,28 @@ export async function getAllMeetings(): Promise<PanelMeeting[]> {
     .order("meeting_at", { ascending: false })
 
   if (error) fail("Toplantılar alınamadı", error)
+  return data
+}
+
+/** Müsaitlik: haftalık çalışma saatleri, 7 satır (weekday 0-6), sıralı. */
+export async function getAvailability(): Promise<BookingAvailability[]> {
+  const { data, error } = await supabase
+    .from("booking_availability")
+    .select("*")
+    .order("weekday", { ascending: true })
+
+  if (error) fail("Müsaitlik alınamadı", error)
+  return data
+}
+
+/** Müsaitlik: tamamen kapalı işaretlenen günler, en yakın tarih önce. */
+export async function getBlockedDates(): Promise<BookingBlockedDate[]> {
+  const { data, error } = await supabase
+    .from("booking_blocked_dates")
+    .select("*")
+    .order("blocked_date", { ascending: true })
+
+  if (error) fail("Kapalı günler alınamadı", error)
   return data
 }
 

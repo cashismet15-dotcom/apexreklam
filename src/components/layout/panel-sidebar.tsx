@@ -7,6 +7,7 @@ import {
   Bug,
   Building2,
   CalendarClock,
+  Clock,
   FileText,
   LayoutDashboard,
   StickyNote,
@@ -51,6 +52,7 @@ function buildMenu(role: TeamMemberRole): MenuItem[] {
 
   items.push(
     { title: "Toplantılar", href: "/panel/toplantilar", icon: CalendarClock },
+    { title: "Müsaitlik", href: "/panel/musaitlik", icon: Clock },
     { title: "Sunumlar", href: "/panel/sunumlar", icon: FileText },
     { title: "Video Montajları", href: "/panel/videolar", icon: Video },
     { title: "Reklam Raporları", href: "/panel/raporlar", icon: BarChart3 },
