@@ -19,7 +19,7 @@ import {
   toWhatsappNumber,
 } from "@/lib/firms"
 import { FirmPaymentList, RecordPaymentButton } from "@/components/muhasebe/firm-payments"
-import { buildMonthEvents, monthlyFeeOf, outstandingEvents } from "@/lib/calendar"
+import { buildMonthEvents, monthlyFeeOf, outstandingEvents, paymentOptionsFor } from "@/lib/calendar"
 import {
   getFirmById,
   getFirmNotes,
@@ -68,7 +68,7 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
     isOwner ? getFirmPayments(id) : Promise.resolve([]),
   ])
 
-  // Mühendis360 muhasebesi — bu ayın durumu ve toplam bekleyen.
+  // Mühendis360 muhasebesi — bu ayın durumu, borç dökümü ve ödeme seçenekleri.
   const today = todayIso()
   const billingFirm = { firm, services: firmServices, payments }
   const monthlyFee = monthlyFeeOf(firmServices)
@@ -77,10 +77,19 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
     month: Number(today.slice(5, 7)),
     todayIso: today,
     firms: [billingFirm],
-  }).find((e) => e.kind === "aylik")
-  const outstanding = outstandingEvents([billingFirm], today)
-    .filter((e) => e.dateIso <= today)
-    .reduce((acc, e) => acc + e.remaining, 0)
+    // Söz verilen tarihi bu aya kaymış eski ay borçları değil, bu ayın kendi ücreti.
+  }).find((e) => e.kind === "aylik" && e.period === today.slice(0, 7))
+  const openItems = outstandingEvents([billingFirm], today)
+  const overdueTotal = openItems.filter((e) => e.dateIso < today).reduce((acc, e) => acc + e.remaining, 0)
+  const openTotal = openItems.reduce((acc, e) => acc + e.remaining, 0)
+  const paymentOptions = paymentOptionsFor(openItems)
+  const serviceNames = Object.fromEntries(firmServices.map((s) => [s.id, s.name]))
+  const paidByService: Record<string, number> = {}
+  for (const pay of payments) {
+    if (pay.firm_service_id) {
+      paidByService[pay.firm_service_id] = (paidByService[pay.firm_service_id] ?? 0) + Number(pay.amount)
+    }
+  }
 
   const socials = [
     { label: "Instagram", value: firm.instagram, base: "https://instagram.com/" },
@@ -206,7 +215,7 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
                 <CardTitle className="text-sm">Aldığı Hizmetler</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <FirmServiceList items={firmServices} showAmounts={isOwner} />
+                <FirmServiceList items={firmServices} showAmounts={isOwner} paidByService={paidByService} />
               </CardContent>
             </Card>
           ) : null}
@@ -214,20 +223,20 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
           {isOwner && firm.billing_start ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Ödemeler</CardTitle>
-                {monthlyFee > 0 ? (
+                <CardTitle className="text-sm">Ödemeler ve Borç</CardTitle>
+                {paymentOptions.length > 0 || monthlyFee > 0 ? (
                   <CardAction>
                     <RecordPaymentButton
                       firmId={firm.id}
                       firmName={firm.name}
-                      defaultAmount={thisMonth?.remaining || monthlyFee}
-                      defaultPeriod={today.slice(0, 7)}
+                      options={paymentOptions}
+                      hasMonthly={monthlyFee > 0}
                       todayIso={today}
                     />
                   </CardAction>
                 ) : null}
               </CardHeader>
-              <CardContent className="flex flex-col gap-3">
+              <CardContent className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-3 text-sm">
                   {monthlyFee > 0 ? (
                     <div className="flex justify-between">
@@ -249,7 +258,8 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
                           "font-medium",
                           thisMonth.status === "odendi" && "text-emerald-700 dark:text-emerald-400",
                           thisMonth.status === "gecikti" && "text-red-700 dark:text-red-400",
-                          (thisMonth.status === "bekliyor" || thisMonth.status === "kismi") && "text-amber-700 dark:text-amber-400"
+                          (thisMonth.status === "bekliyor" || thisMonth.status === "kismi") &&
+                            "text-amber-700 dark:text-amber-400"
                         )}
                       >
                         {thisMonth.status === "odendi"
@@ -258,14 +268,58 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
                       </span>
                     </div>
                   ) : null}
-                  {outstanding > 0 ? (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Toplam bekleyen</span>
-                      <span className="font-semibold text-red-700 dark:text-red-400">{formatCurrency(outstanding)}</span>
+                  <div className="mt-1 flex justify-between border-t pt-2">
+                    <span className="font-medium">Toplam borç</span>
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        openTotal > 0 ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"
+                      )}
+                    >
+                      {openTotal > 0 ? formatCurrency(openTotal) : "Borcu yok"}
+                    </span>
+                  </div>
+                  {overdueTotal > 0 && overdueTotal !== openTotal ? (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Vadesi geçmiş</span>
+                      <span className="font-medium text-red-700 dark:text-red-400">{formatCurrency(overdueTotal)}</span>
                     </div>
                   ) : null}
                 </div>
-                <FirmPaymentList payments={payments} />
+
+                {openItems.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Borç Dökümü</span>
+                    <div className="flex flex-col divide-y">
+                      {openItems.map((e) => (
+                        <div key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                          <div className="flex min-w-0 flex-col">
+                            <span className="truncate">{e.kind === "aylik" ? e.label : `${e.label} (tek seferlik)`}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {e.dateIso !== e.originalDateIso
+                                ? `söz verilen: ${formatDate(e.dateIso)} · asıl vade ${formatDate(e.originalDateIso)}`
+                                : `vade ${formatDate(e.dateIso)}`}
+                              {e.paid > 0 ? ` · ${formatCurrency(e.paid)} alındı` : ""}
+                            </span>
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 font-semibold tabular-nums",
+                              e.status === "gecikti" ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"
+                            )}
+                          >
+                            {formatCurrency(e.remaining)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">Ödeme Geçmişi</span>
+                  <FirmPaymentList payments={payments} serviceNames={serviceNames} />
+                </div>
               </CardContent>
             </Card>
           ) : null}

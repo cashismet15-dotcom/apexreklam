@@ -10,9 +10,10 @@ import { formatCurrency, formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { FirmService } from "@/lib/types"
 
-function Row({ item, canEdit }: { item: FirmService; canEdit: boolean }) {
+function Row({ item, canEdit, paid }: { item: FirmService; canEdit: boolean; paid: number }) {
   const [isPending, startTransition] = useTransition()
   const isOneTime = item.billing === "tek_seferlik"
+  const remaining = Math.max(0, Number(item.price) - paid)
 
   return (
     <div className="flex items-center gap-3 py-2.5">
@@ -30,7 +31,9 @@ function Row({ item, canEdit }: { item: FirmService; canEdit: boolean }) {
           >
             {item.paid_at
               ? `Tahsil edildi · ${formatDate(item.paid_at)}`
-              : `Tahsilat bekliyor${item.due_date ? ` · vade ${formatDate(item.due_date)}` : ""}`}
+              : paid > 0
+                ? `${formatCurrency(paid)} alındı · kalan ${formatCurrency(remaining)}`
+                : `Tahsilat bekliyor${item.due_date ? ` · vade ${formatDate(item.due_date)}` : ""}`}
           </span>
         ) : null}
       </div>
@@ -45,14 +48,15 @@ function Row({ item, canEdit }: { item: FirmService; canEdit: boolean }) {
               variant={item.paid_at ? "ghost" : "outline"}
               size="sm"
               disabled={isPending}
-              onClick={() =>
+              onClick={() => {
+                if (item.paid_at && !window.confirm(`"${item.name}" için alınan tüm ödemeler silinsin mi?`)) return
                 startTransition(async () => void (await setOneTimePaid(item.id, !item.paid_at)))
-              }
+              }}
             >
               {item.paid_at ? "Geri al" : (
                 <>
                   <Check />
-                  Tahsil edildi
+                  {paid > 0 ? "Kalanı tahsil et" : "Tahsil edildi"}
                 </>
               )}
             </Button>
@@ -78,9 +82,12 @@ function Row({ item, canEdit }: { item: FirmService; canEdit: boolean }) {
 export function FirmServiceList({
   items,
   showAmounts,
+  paidByService = {},
 }: {
   items: FirmService[]
   showAmounts: boolean
+  /** Tek seferlik hizmet başına şimdiye kadar alınan tutar. */
+  paidByService?: Record<string, number>
 }) {
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">Henüz hizmet almıyor.</p>
@@ -88,12 +95,12 @@ export function FirmServiceList({
   const monthly = items.filter((i) => i.billing === "aylik").reduce((a, i) => a + Number(i.price), 0)
   const oneTimeOpen = items
     .filter((i) => i.billing === "tek_seferlik" && !i.paid_at)
-    .reduce((a, i) => a + Number(i.price), 0)
+    .reduce((a, i) => a + Math.max(0, Number(i.price) - (paidByService[i.id] ?? 0)), 0)
   return (
     <div className="flex flex-col">
       <div className="flex flex-col divide-y">
         {items.map((i) => (
-          <Row key={i.id} item={i} canEdit={showAmounts} />
+          <Row key={i.id} item={i} canEdit={showAmounts} paid={paidByService[i.id] ?? 0} />
         ))}
       </div>
       {showAmounts && (monthly > 0 || oneTimeOpen > 0) ? (

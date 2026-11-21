@@ -4,6 +4,10 @@ import type { Firm, FirmPayment, FirmService } from "@/lib/types"
  * Mühendis360 muhasebesi — eski işletmenin /muhasebe'sinden (customers/payments)
  * tamamen bağımsız. Aylık ücret = firmanın aylık hizmetlerinin toplamı; vade her
  * ayın firms.payment_day'i, ilk vade firms.billing_start. Alınan paralar firm_payments.
+ *
+ * Borç: bir ayın ücreti ya da tek seferlik hizmet parça parça ödenebilir. Kalan
+ * tutar ödenene kadar borç olarak durur; kısmi ödemede "kalan için söz verilen
+ * tarih" girildiyse vade o tarihe kayar.
  */
 
 export type CalendarEventStatus = "odendi" | "kismi" | "bekliyor" | "gecikti"
@@ -11,15 +15,22 @@ export type CalendarEventStatus = "odendi" | "kismi" | "bekliyor" | "gecikti"
 export interface CalendarEvent {
   id: string
   firmId: string
+  /** Güncel vade — söz verilen tarih girildiyse o tarih. */
   dateIso: string
+  /** Asıl vade (söz verilen tarih yoksa dateIso ile aynı). */
+  originalDateIso: string
   kind: "aylik" | "tek_seferlik"
   title: string
+  /** Kısa etiket: "Kasım 2026 ücreti" ya da hizmet adı. */
+  label: string
   amount: number
   paid: number
   remaining: number
   status: CalendarEventStatus
-  /** Aylık için "YYYY-MM" (Ödeme Al formunda kullanılır). */
+  /** Aylık için "YYYY-MM". */
   period: string | null
+  /** Tek seferlik için hizmet id'si. */
+  firmServiceId: string | null
   href: string
 }
 
@@ -36,12 +47,21 @@ export interface BillingFirm {
   payments: FirmPayment[]
 }
 
+const AYLAR = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+]
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0")
 }
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate()
+}
+
+export function periodLabel(period: string): string {
+  return `${AYLAR[Number(period.slice(5, 7)) - 1]} ${period.slice(0, 4)}`
 }
 
 export function monthBounds(year: number, month: number): { fromIso: string; toIso: string } {
@@ -73,11 +93,7 @@ export function monthlyFeeOf(services: FirmService[]): number {
 }
 
 /** Firmanın verilen aydaki aylık vadesi; tahsilat başlamadıysa null. */
-export function monthlyDueDate(
-  firm: BillingFirm["firm"],
-  year: number,
-  month: number
-): string | null {
+export function monthlyDueDate(firm: BillingFirm["firm"], year: number, month: number): string | null {
   if (!firm.payment_day || !firm.billing_start) return null
   const due = `${year}-${pad2(month)}-${pad2(Math.min(firm.payment_day, daysInMonth(year, month)))}`
   // İlk ödeme ayı: vade, ilk ödeme tarihinin kendisi.
@@ -85,12 +101,100 @@ export function monthlyDueDate(
   return due < firm.billing_start ? null : due
 }
 
-function statusOf(remaining: number, paid: number, dueIso: string, todayIso: string): CalendarEventStatus {
-  if (remaining <= 0) return "odendi"
-  if (paid > 0) return "kismi"
-  return dueIso < todayIso ? "gecikti" : "bekliyor"
+/** Bir kalemin ödemelerinden: ödenen, kalan, (varsa) en son söz verilen tarih. */
+function settle(amount: number, itemPayments: FirmPayment[]) {
+  const paid = itemPayments.reduce((acc, p) => acc + Number(p.amount), 0)
+  const remaining = Math.max(0, Math.round((amount - paid) * 100) / 100)
+  let promised: string | null = null
+  for (const p of itemPayments) {
+    if (p.expected_remaining_date && (!promised || p.expected_remaining_date > promised)) {
+      promised = p.expected_remaining_date
+    }
+  }
+  return { paid, remaining, promised: remaining > 0 ? promised : null }
 }
 
+function statusOf(remaining: number, paid: number, dueIso: string, todayIso: string): CalendarEventStatus {
+  if (remaining <= 0) return "odendi"
+  if (dueIso < todayIso) return "gecikti"
+  return paid > 0 ? "kismi" : "bekliyor"
+}
+
+/**
+ * Bir firmanın tüm kalemleri: ilk ödeme ayından `untilPeriod` ("YYYY-MM") ayına
+ * kadar her ayın ücreti + tüm tek seferlik hizmetler.
+ */
+function firmEvents(bf: BillingFirm, todayIso: string, untilPeriod: string): CalendarEvent[] {
+  const { firm, services, payments } = bf
+  const href = `/panel/firmalar/${firm.id}`
+  const events: CalendarEvent[] = []
+
+  const fee = monthlyFeeOf(services)
+  if (fee > 0 && firm.billing_start) {
+    let y = Number(firm.billing_start.slice(0, 4))
+    let m = Number(firm.billing_start.slice(5, 7))
+    while (`${y}-${pad2(m)}` <= untilPeriod) {
+      const period = `${y}-${pad2(m)}`
+      const due = monthlyDueDate(firm, y, m)
+      if (due) {
+        const s = settle(fee, payments.filter((p) => p.period?.slice(0, 7) === period))
+        const dateIso = s.promised ?? due
+        events.push({
+          id: `m-${firm.id}-${period}`,
+          firmId: firm.id,
+          dateIso,
+          originalDateIso: due,
+          kind: "aylik",
+          title: firm.name,
+          label: `${periodLabel(period)} ücreti`,
+          amount: fee,
+          paid: s.paid,
+          remaining: s.remaining,
+          status: statusOf(s.remaining, s.paid, dateIso, todayIso),
+          period,
+          firmServiceId: null,
+          href,
+        })
+      }
+      m += 1
+      if (m > 12) {
+        m = 1
+        y += 1
+      }
+    }
+  }
+
+  for (const svc of services) {
+    if (svc.billing !== "tek_seferlik" || !svc.due_date) continue
+    const price = Number(svc.price)
+    const s = settle(price, payments.filter((p) => p.firm_service_id === svc.id))
+    const dateIso = s.promised ?? svc.due_date
+    events.push({
+      id: `o-${svc.id}`,
+      firmId: firm.id,
+      dateIso,
+      originalDateIso: svc.due_date,
+      kind: "tek_seferlik",
+      title: `${firm.name} — ${svc.name}`,
+      label: svc.name,
+      amount: price,
+      paid: s.paid,
+      remaining: s.remaining,
+      status: statusOf(s.remaining, s.paid, dateIso, todayIso),
+      period: null,
+      firmServiceId: svc.id,
+      href,
+    })
+  }
+
+  return events
+}
+
+function byDate(a: CalendarEvent, b: CalendarEvent): number {
+  return a.dateIso.localeCompare(b.dateIso) || a.title.localeCompare(b.title, "tr")
+}
+
+/** Takvimde o ay görünecek kalemler (söz verilen tarihi bu aya kayanlar dahil). */
 export function buildMonthEvents(params: {
   year: number
   month: number
@@ -99,56 +203,11 @@ export function buildMonthEvents(params: {
 }): CalendarEvent[] {
   const { year, month, todayIso, firms } = params
   const { fromIso, toIso } = monthBounds(year, month)
-  const period = `${year}-${pad2(month)}`
-  const events: CalendarEvent[] = []
-
-  for (const { firm, services, payments } of firms) {
-    const href = `/panel/firmalar/${firm.id}`
-
-    const fee = monthlyFeeOf(services)
-    const due = monthlyDueDate(firm, year, month)
-    if (fee > 0 && due) {
-      const paid = payments
-        .filter((p) => p.period?.slice(0, 7) === period)
-        .reduce((acc, p) => acc + Number(p.amount), 0)
-      const remaining = Math.max(0, fee - paid)
-      events.push({
-        id: `m-${firm.id}-${period}`,
-        firmId: firm.id,
-        dateIso: due,
-        kind: "aylik",
-        title: firm.name,
-        amount: fee,
-        paid,
-        remaining,
-        status: statusOf(remaining, paid, due, todayIso),
-        period,
-        href,
-      })
-    }
-
-    for (const s of services) {
-      if (s.billing !== "tek_seferlik" || !s.due_date) continue
-      if (s.due_date < fromIso || s.due_date > toIso) continue
-      const price = Number(s.price)
-      const paid = s.paid_at ? price : 0
-      events.push({
-        id: `o-${s.id}`,
-        firmId: firm.id,
-        dateIso: s.due_date,
-        kind: "tek_seferlik",
-        title: `${firm.name} — ${s.name}`,
-        amount: price,
-        paid,
-        remaining: price - paid,
-        status: statusOf(price - paid, 0, s.due_date, todayIso),
-        period: null,
-        href,
-      })
-    }
-  }
-
-  return events.sort((a, b) => a.dateIso.localeCompare(b.dateIso) || a.title.localeCompare(b.title, "tr"))
+  const until = `${year}-${pad2(month)}`
+  return firms
+    .flatMap((bf) => firmEvents(bf, todayIso, until))
+    .filter((e) => e.dateIso >= fromIso && e.dateIso <= toIso)
+    .sort(byDate)
 }
 
 /** Ayın özeti. "Tahsil edilen" = o ay içinde gerçekten alınan para (ödeme tarihine göre). */
@@ -166,58 +225,67 @@ export function summarizeMonth(
     .reduce((acc, p) => acc + Number(p.amount), 0)
 
   return {
-    expected: events.reduce((acc, e) => acc + e.amount, 0),
+    // Önceki aydan bu aya söz verilerek kayan borçlar sadece kalan tutarıyla sayılır.
+    expected: events.reduce(
+      (acc, e) => acc + (e.originalDateIso >= fromIso && e.originalDateIso <= toIso ? e.amount : e.remaining),
+      0
+    ),
     collected,
     remaining: events.reduce((acc, e) => acc + e.remaining, 0),
-    // Vadesi geçmiş her kalan (kısmi ödenmiş olsa bile) gecikmiş sayılır.
     overdue: events.filter((e) => e.dateIso < todayIso).reduce((acc, e) => acc + e.remaining, 0),
   }
 }
 
-/**
- * Bugüne kadar vadesi gelmiş ama ödenmemiş her şey (önceki aylardan kalanlar
- * dahil) + bu ayın bekleyenleri — "Bekleyen Tahsilatlar" listesi için.
- */
+/** Ödenmemiş her kalem (bu aya kadarki aylar + tüm tek seferlikler), vadeye göre. */
 export function outstandingEvents(firms: BillingFirm[], todayIso: string): CalendarEvent[] {
-  const out: CalendarEvent[] = []
-  const [ty, tm] = [Number(todayIso.slice(0, 4)), Number(todayIso.slice(5, 7))]
-
-  for (const bf of firms) {
-    if (!bf.firm.billing_start) continue
-    // İlk ödeme ayından bu aya kadar her ayı tara.
-    let y = Number(bf.firm.billing_start.slice(0, 4))
-    let m = Number(bf.firm.billing_start.slice(5, 7))
-    while (y < ty || (y === ty && m <= tm)) {
-      out.push(
-        ...buildMonthEvents({ year: y, month: m, todayIso, firms: [{ ...bf, services: bf.services.filter((s) => s.billing === "aylik") }] })
-      )
-      m += 1
-      if (m > 12) {
-        m = 1
-        y += 1
-      }
-    }
-    // Tek seferlikler: ödenmemiş olanların hepsi (vadesi ne zaman olursa olsun).
-    for (const s of bf.services) {
-      if (s.billing !== "tek_seferlik" || s.paid_at || !s.due_date) continue
-      const price = Number(s.price)
-      out.push({
-        id: `o-${s.id}`,
-        firmId: bf.firm.id,
-        dateIso: s.due_date,
-        kind: "tek_seferlik",
-        title: `${bf.firm.name} — ${s.name}`,
-        amount: price,
-        paid: 0,
-        remaining: price,
-        status: s.due_date < todayIso ? "gecikti" : "bekliyor",
-        period: null,
-        href: `/panel/firmalar/${bf.firm.id}`,
-      })
-    }
-  }
-
-  return out
+  return firms
+    .flatMap((bf) => firmEvents(bf, todayIso, todayIso.slice(0, 7)))
     .filter((e) => e.remaining > 0)
-    .sort((a, b) => a.dateIso.localeCompare(b.dateIso))
+    .sort(byDate)
+}
+
+export interface FirmDebt {
+  firmId: string
+  name: string
+  /** Vadesi geçmiş toplam. */
+  overdue: number
+  /** Vadesi gelmemiş ama ödenmemiş (bu ay + tek seferlik). */
+  upcoming: number
+  oldestOverdue: string | null
+  items: CalendarEvent[]
+}
+
+/** Firma bazında borç — en çok gecikmiş borcu olan en üstte. */
+export function debtsByFirm(firms: BillingFirm[], todayIso: string): FirmDebt[] {
+  const map = new Map<string, FirmDebt>()
+  for (const e of outstandingEvents(firms, todayIso)) {
+    const d = map.get(e.firmId) ?? {
+      firmId: e.firmId,
+      name: firms.find((f) => f.firm.id === e.firmId)?.firm.name ?? e.title,
+      overdue: 0,
+      upcoming: 0,
+      oldestOverdue: null,
+      items: [],
+    }
+    if (e.dateIso < todayIso) {
+      d.overdue += e.remaining
+      if (!d.oldestOverdue || e.dateIso < d.oldestOverdue) d.oldestOverdue = e.dateIso
+    } else {
+      d.upcoming += e.remaining
+    }
+    d.items.push(e)
+    map.set(e.firmId, d)
+  }
+  return [...map.values()].sort((a, b) => b.overdue - a.overdue || b.upcoming - a.upcoming)
+}
+
+/** Ödeme Al formu için seçenekler: firmanın ödenmemiş kalemleri, en eskisi önce. */
+export function paymentOptionsFor(events: CalendarEvent[]): { key: string; label: string; remaining: number }[] {
+  return events
+    .filter((e) => e.remaining > 0)
+    .map((e) => ({
+      key: e.kind === "aylik" ? `aylik:${e.period}` : `svc:${e.firmServiceId}`,
+      label: e.kind === "aylik" ? e.label : `${e.label} (tek seferlik)`,
+      remaining: e.remaining,
+    }))
 }

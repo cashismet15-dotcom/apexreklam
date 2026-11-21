@@ -303,5 +303,7 @@ export interface FirmPayment {
   /** Tek seferlik hizmet tahsilatıysa ilgili hizmet. */
   firm_service_id: string | null
   note: string | null
+  /** Kısmi ödemede kalan için söz verilen tarih. */
+  expected_remaining_date: string | null
   created_at: string
 }

@@ -367,7 +367,25 @@ function todayIstanbul(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" })
 }
 
-/** Tek seferlik hizmeti tahsil edildi / edilmedi olarak işaretler; tahsilat firm_payments'a yazılır. */
+/** Tek seferlik hizmetin ödemeleri fiyatı karşıladıysa paid_at'i doldurur, karşılamıyorsa temizler. */
+async function syncOneTimePaidAt(firmServiceId: string) {
+  const [{ data: svc }, { data: pays }] = await Promise.all([
+    supabase.from("firm_services").select("price").eq("id", firmServiceId).maybeSingle(),
+    supabase.from("firm_payments").select("amount, payment_date").eq("firm_service_id", firmServiceId),
+  ])
+  if (!svc) return
+  const paid = (pays ?? []).reduce((acc, p) => acc + Number(p.amount), 0)
+  const lastDate = (pays ?? []).map((p) => p.payment_date as string).sort().at(-1) ?? null
+  await supabase
+    .from("firm_services")
+    .update({ paid_at: paid >= Number(svc.price) ? lastDate : null })
+    .eq("id", firmServiceId)
+}
+
+/**
+ * Tek seferlik hizmet — "Tahsil edildi": kalan tutarın tamamı bugün alındı.
+ * "Geri al": bu hizmete ait tüm tahsilat kayıtları silinir.
+ */
 export async function setOneTimePaid(firmServiceId: string, paid: boolean): Promise<ActionState> {
   await requireOwner()
   const { data: item, error: fetchError } = await supabase
@@ -378,43 +396,60 @@ export async function setOneTimePaid(firmServiceId: string, paid: boolean): Prom
     .maybeSingle()
   if (fetchError || !item) return { status: "error", message: "Hizmet bulunamadı." }
 
-  // Önce varsa eski tahsilat kaydını temizle (çift kayıt olmasın).
-  const { error: clearError } = await supabase
-    .from("firm_payments")
-    .delete()
-    .eq("firm_service_id", firmServiceId)
-  if (clearError) return { status: "error", message: `Güncellenemedi: ${clearError.message}` }
-
   if (paid) {
-    const { error: payError } = await supabase.from("firm_payments").insert({
-      firm_id: item.firm_id,
-      firm_service_id: item.id,
-      amount: item.price,
-      payment_date: todayIstanbul(),
-      note: item.name,
-    })
-    if (payError) return { status: "error", message: `Tahsilat kaydedilemedi: ${payError.message}` }
+    const { data: pays } = await supabase
+      .from("firm_payments")
+      .select("amount")
+      .eq("firm_service_id", firmServiceId)
+    const alreadyPaid = (pays ?? []).reduce((acc, p) => acc + Number(p.amount), 0)
+    const remaining = Math.round((Number(item.price) - alreadyPaid) * 100) / 100
+    if (remaining > 0) {
+      const { error: payError } = await supabase.from("firm_payments").insert({
+        firm_id: item.firm_id,
+        firm_service_id: item.id,
+        amount: remaining,
+        payment_date: todayIstanbul(),
+        note: item.name,
+      })
+      if (payError) return { status: "error", message: `Tahsilat kaydedilemedi: ${payError.message}` }
+    }
+  } else {
+    const { error: clearError } = await supabase
+      .from("firm_payments")
+      .delete()
+      .eq("firm_service_id", firmServiceId)
+    if (clearError) return { status: "error", message: `Güncellenemedi: ${clearError.message}` }
   }
 
-  const { error } = await supabase
-    .from("firm_services")
-    .update({ paid_at: paid ? todayIstanbul() : null })
-    .eq("id", firmServiceId)
-  if (error) return { status: "error", message: `Güncellenemedi: ${error.message}` }
-
+  await syncOneTimePaidAt(firmServiceId)
   revalidateFirms(item.firm_id)
   revalidateMuhasebe()
   return { status: "success" }
 }
 
-const paymentSchema = z.object({
-  amount: z.coerce.number().positive("Tutar 0'dan büyük olmalı"),
-  payment_date: dateString,
-  period: z.string().regex(/^\d{4}-\d{2}$/, "Ay seçin"),
-  note: optionalText(500),
-})
+const paymentSchema = z
+  .object({
+    amount: z.coerce.number().positive("Tutar 0'dan büyük olmalı"),
+    payment_date: dateString,
+    // "aylik" ya da tek seferlik hizmetin id'si.
+    target: z.string().min(1, "Neyin ödemesi olduğunu seçin"),
+    period: z.string().optional().or(z.literal("")),
+    expected_remaining_date: z.string().optional().or(z.literal("")),
+    note: optionalText(500),
+  })
+  .refine((d) => d.target !== "aylik" || /^\d{4}-\d{2}$/.test(d.period ?? ""), {
+    message: "Ay seçin",
+    path: ["period"],
+  })
+  .refine((d) => !d.expected_remaining_date || /^\d{4}-\d{2}-\d{2}$/.test(d.expected_remaining_date), {
+    message: "Geçerli bir tarih girin",
+    path: ["expected_remaining_date"],
+  })
 
-/** Aylık ücret için ödeme al (kapora / kısmi ödeme de olabilir). */
+/**
+ * Ödeme al — aylık ücret (hangi ayın) ya da tek seferlik hizmet için. Kısmi
+ * olabilir; kalan için söz verilen tarih girilirse vade o tarihe kayar.
+ */
 export async function recordFirmPayment(
   firmId: string,
   _prev: ActionState,
@@ -424,24 +459,45 @@ export async function recordFirmPayment(
   const parsed = paymentSchema.safeParse({
     amount: formData.get("amount"),
     payment_date: formData.get("payment_date"),
-    period: formData.get("period"),
+    target: formData.get("target"),
+    period: formData.get("period") ?? "",
+    expected_remaining_date: formData.get("expected_remaining_date") ?? "",
     note: formData.get("note"),
   })
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Formda hatalar var.",
+      message: parsed.error.issues[0]?.message ?? "Formda hatalar var.",
       fieldErrors: parsed.error.flatten().fieldErrors,
     }
   }
+  const d = parsed.data
+  const isMonthly = d.target === "aylik"
+
+  if (!isMonthly) {
+    const { data: svc } = await supabase
+      .from("firm_services")
+      .select("id")
+      .eq("id", d.target)
+      .eq("firm_id", firmId)
+      .eq("billing", "tek_seferlik")
+      .maybeSingle()
+    if (!svc) return { status: "error", message: "Seçilen hizmet bu firmaya ait değil." }
+  }
+
   const { error } = await supabase.from("firm_payments").insert({
     firm_id: firmId,
-    amount: parsed.data.amount,
-    payment_date: parsed.data.payment_date,
-    period: `${parsed.data.period}-01`,
-    note: parsed.data.note || null,
+    amount: d.amount,
+    payment_date: d.payment_date,
+    period: isMonthly ? `${d.period}-01` : null,
+    firm_service_id: isMonthly ? null : d.target,
+    expected_remaining_date: d.expected_remaining_date || null,
+    note: d.note || null,
   })
   if (error) return { status: "error", message: `Ödeme kaydedilemedi: ${error.message}` }
+
+  if (!isMonthly) await syncOneTimePaidAt(d.target)
+
   revalidateFirms(firmId)
   revalidateMuhasebe()
   return { status: "success", message: "Ödeme kaydedildi." }
@@ -456,10 +512,8 @@ export async function deleteFirmPayment(paymentId: string): Promise<ActionState>
     .select("firm_id, firm_service_id")
     .single()
   if (error) return { status: "error", message: `Ödeme silinemedi: ${error.message}` }
-  // Tek seferlik tahsilat silindiyse hizmet tekrar "bekliyor" olsun.
-  if (data.firm_service_id) {
-    await supabase.from("firm_services").update({ paid_at: null }).eq("id", data.firm_service_id)
-  }
+  // Tek seferlik tahsilat silindiyse hizmetin "ödendi" durumu yeniden hesaplanır.
+  if (data.firm_service_id) await syncOneTimePaidAt(data.firm_service_id)
   revalidateFirms(data.firm_id)
   revalidateMuhasebe()
   return { status: "success" }

@@ -5,15 +5,15 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { FirmPaymentList, RecordPaymentButton } from "@/components/muhasebe/firm-payments"
 import { MonthCalendar } from "@/components/muhasebe/month-calendar"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getSessionRole } from "@/lib/auth-role"
 import {
   buildMonthEvents,
+  debtsByFirm,
   monthBounds,
   monthlyFeeOf,
-  outstandingEvents,
   parseMonthParam,
+  paymentOptionsFor,
   shiftMonth,
   summarizeMonth,
 } from "@/lib/calendar"
@@ -58,10 +58,12 @@ export default async function Muhendis360MuhasebePage({
   const mrr = firms.reduce((acc, f) => acc + monthlyFeeOf(f.services), 0)
   const activeCount = firms.filter((f) => monthlyFeeOf(f.services) > 0).length
 
-  // Vadesi gelmiş/geçmiş + bu ay içinde vadesi gelecek ödenmemişler.
-  const { toIso: thisMonthEnd } = monthBounds(Number(today.slice(0, 4)), Number(today.slice(5, 7)))
-  const bekleyenler = outstandingEvents(firms, today).filter((e) => e.dateIso <= thisMonthEnd)
+  const debts = debtsByFirm(firms, today)
+  const totalDebt = debts.reduce((acc, d) => acc + d.overdue + d.upcoming, 0)
+  const totalOverdueDebt = debts.reduce((acc, d) => acc + d.overdue, 0)
+
   const firmNames = Object.fromEntries(firms.map((f) => [f.firm.id, f.firm.name]))
+  const serviceNames = Object.fromEntries(firms.flatMap((f) => f.services.map((s) => [s.id, s.name])))
   const recentPayments = firms
     .flatMap((f) => f.payments)
     .sort((a, b) => b.payment_date.localeCompare(a.payment_date) || b.created_at.localeCompare(a.created_at))
@@ -71,7 +73,7 @@ export default async function Muhendis360MuhasebePage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Muhasebe"
-        description="Mühendis360 tahsilatları — firmaların aylık ve tek seferlik ödemeleri."
+        description="Mühendis360 tahsilatları — firmaların aylık ve tek seferlik ödemeleri, kalan borçlar."
         actions={
           <div className="flex items-center gap-1">
             <Link
@@ -102,13 +104,18 @@ export default async function Muhendis360MuhasebePage({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Ozet label="Aylık gelir (MRR)" value={mrr} hint={`${activeCount} aktif firma`} />
-        <Ozet label="Bu ay beklenen" value={ozet.expected} />
+        <Ozet label={`${AY_ADLARI[month - 1]} beklenen`} value={ozet.expected} />
         <Ozet label="Tahsil edilen" value={ozet.collected} tone="text-emerald-700 dark:text-emerald-400" />
-        <Ozet label="Kalan" value={ozet.remaining} tone="text-amber-700 dark:text-amber-400" />
         <Ozet
-          label="Geciken"
-          value={ozet.overdue}
-          tone={ozet.overdue > 0 ? "text-red-700 dark:text-red-400" : undefined}
+          label="Toplam borç"
+          value={totalDebt}
+          tone={totalDebt > 0 ? "text-amber-700 dark:text-amber-400" : undefined}
+          hint={`${debts.length} firma`}
+        />
+        <Ozet
+          label="Vadesi geçmiş borç"
+          value={totalOverdueDebt}
+          tone={totalOverdueDebt > 0 ? "text-red-700 dark:text-red-400" : undefined}
         />
       </div>
 
@@ -125,46 +132,66 @@ export default async function Muhendis360MuhasebePage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Bekleyen Tahsilatlar {bekleyenler.length > 0 ? `(${bekleyenler.length})` : ""}</CardTitle>
+            <CardTitle className="text-sm">Borçlu Firmalar {debts.length > 0 ? `(${debts.length})` : ""}</CardTitle>
           </CardHeader>
           <CardContent>
-            {bekleyenler.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Bekleyen tahsilat yok.</p>
+            {debts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Borcu olan firma yok.</p>
             ) : (
               <div className="flex flex-col divide-y">
-                {bekleyenler.map((e) => (
-                  <div key={e.id} className="flex items-center gap-3 py-2.5">
-                    <Link href={e.href} className="flex min-w-0 flex-1 flex-col hover:underline">
-                      <span className="truncate text-sm font-medium">{e.title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {e.kind === "aylik" ? "Aylık" : "Tek seferlik"} · {formatDate(e.dateIso)}
-                        {e.paid > 0 ? ` · ${formatCurrency(e.paid)} alındı` : ""}
-                      </span>
-                    </Link>
-                    <span className="text-sm font-semibold tabular-nums">{formatCurrency(e.remaining)}</span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "font-normal",
-                        e.status === "gecikti"
-                          ? "border-red-200 bg-red-50 text-red-700"
-                          : "border-amber-200 bg-amber-50 text-amber-700"
-                      )}
-                    >
-                      {e.status === "gecikti" ? "Gecikti" : e.status === "kismi" ? "Kısmi" : "Bekliyor"}
-                    </Badge>
-                    {e.kind === "aylik" && e.period ? (
-                      <RecordPaymentButton
-                        variant="outline"
-                        firmId={e.firmId}
-                        firmName={e.title}
-                        defaultAmount={e.remaining}
-                        defaultPeriod={e.period}
-                        todayIso={today}
-                      />
-                    ) : null}
-                  </div>
-                ))}
+                {debts.map((d) => {
+                  const bf = firms.find((f) => f.firm.id === d.firmId)
+                  return (
+                    <div key={d.firmId} className="flex flex-col gap-2 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 flex-col">
+                          <Link href={`/panel/firmalar/${d.firmId}`} className="truncate text-sm font-semibold hover:underline">
+                            {d.name}
+                          </Link>
+                          <span className="text-xs text-muted-foreground">
+                            {d.overdue > 0 ? (
+                              <span className="text-red-700 dark:text-red-400">
+                                {formatCurrency(d.overdue)} gecikmiş
+                                {d.oldestOverdue ? ` · en eskisi ${formatDate(d.oldestOverdue)}` : ""}
+                              </span>
+                            ) : null}
+                            {d.overdue > 0 && d.upcoming > 0 ? " · " : ""}
+                            {d.upcoming > 0 ? `${formatCurrency(d.upcoming)} vadesi gelmemiş` : ""}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="text-sm font-semibold tabular-nums">
+                            {formatCurrency(d.overdue + d.upcoming)}
+                          </span>
+                          <RecordPaymentButton
+                            variant="outline"
+                            firmId={d.firmId}
+                            firmName={d.name}
+                            options={paymentOptionsFor(d.items)}
+                            hasMonthly={bf ? monthlyFeeOf(bf.services) > 0 : false}
+                            todayIso={today}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {d.items.map((e) => (
+                          <span
+                            key={e.id}
+                            className={cn(
+                              "rounded border px-1.5 py-0.5 text-[11px]",
+                              e.dateIso < today
+                                ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                                : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                            )}
+                          >
+                            {e.label}: {formatCurrency(e.remaining)}
+                            {e.dateIso !== e.originalDateIso ? ` (söz ${formatDate(e.dateIso)})` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </CardContent>
@@ -175,7 +202,7 @@ export default async function Muhendis360MuhasebePage({
             <CardTitle className="text-sm">Son Ödemeler</CardTitle>
           </CardHeader>
           <CardContent>
-            <FirmPaymentList payments={recentPayments} firmNames={firmNames} />
+            <FirmPaymentList payments={recentPayments} firmNames={firmNames} serviceNames={serviceNames} />
           </CardContent>
         </Card>
       </div>
