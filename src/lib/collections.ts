@@ -139,6 +139,19 @@ export function computeCollectionStatuses(
       } else {
         dueDate = dueDateThisMonth
       }
+      // Yeni başlayan müşteri: henüz hiç ödeme yoksa vade, başlangıç tarihinden
+      // önceki bir güne düşmesin (örn. 26'sında anlaşılıp ilk ödemesi gelecek
+      // ayın 3'ü olan firma "bu ayın 3'ü — gecikti" görünmesin).
+      if (customerPayments.length === 0 && dueDate < customer.start_date) {
+        const [sy, sm] = customer.start_date.split("-").map(Number)
+        let cycle = { year: sy, month: sm }
+        let candidate = dueDateForCycle(cycle.year, cycle.month, customer.payment_day)
+        if (candidate < customer.start_date) {
+          cycle = nextCycle(cycle.year, cycle.month)
+          candidate = dueDateForCycle(cycle.year, cycle.month, customer.payment_day)
+        }
+        dueDate = candidate
+      }
       // Geçmişte dondurulmuş günler varsa vade o kadar ileri kayar — donduruldu
       // günler kaybolmaz, sadece ödeme tarihi ötelenir.
       dueDate = addDaysIso(dueDate, customer.freeze_offset_days)

@@ -5,16 +5,20 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Bug,
+  Briefcase,
   Building2,
   CalendarClock,
   Clock,
   FileText,
+  Handshake,
   LayoutDashboard,
+  Tags,
   StickyNote,
   UserPlus,
   UserRound,
   Users,
   Video,
+  Wallet,
 } from "lucide-react"
 
 import {
@@ -42,10 +46,26 @@ interface MenuItem {
 function buildMenu(role: TeamMemberRole): MenuItem[] {
   const items: MenuItem[] = [{ title: "Dashboard", href: "/panel", icon: LayoutDashboard }]
 
-  // Şirketler ve Potansiyel Müşteriler (müşteri verisiyle ilgili her şey) — sadece owner ve Batuhan.
+  // Firmalar / Müşterilerimiz (müşteri verisiyle ilgili her şey) — sadece owner ve Batuhan.
   if (canViewCustomers(role)) {
     items.push(
-      { title: "Şirketler", href: "/panel/sirketler", icon: Building2 },
+      { title: "Firmalar", href: "/panel/firmalar", icon: Building2 },
+      { title: "Müşterilerimiz", href: "/panel/musterilerimiz", icon: Handshake }
+    )
+  }
+
+  // Fiyatlar ve tahsilat sadece owner.
+  if (role === "owner") {
+    items.push(
+      { title: "Hizmetler", href: "/panel/hizmetler", icon: Tags },
+      { title: "Muhasebe", href: "/muhasebe", icon: Wallet }
+    )
+  }
+
+  // Eski yapı (halı yıkama dönemi) — yeni yapıya taşınana kadar duruyor.
+  if (canViewCustomers(role)) {
+    items.push(
+      { title: "Eski Şirketler", href: "/panel/sirketler", icon: Briefcase },
       { title: "Potansiyel Müşteriler", href: "/panel/potansiyel-musteriler", icon: UserPlus }
     )
   }

@@ -15,6 +15,8 @@ export interface Customer {
   frozen_since: string | null
   /** Bugüne kadar biriken toplam dondurma günü; ödeme vadeleri bu kadar ileri kayar. */
   freeze_offset_days: number
+  /** Firmalar modülünden açıldıysa bağlı firma; eski kayıtlarda null. */
+  firm_id: string | null
 }
 
 export interface Payment {
@@ -215,4 +217,73 @@ export interface TaskStats {
   openCount: number
   overdueCount: number
   byCategory: Record<ClientTaskCategory, number>
+}
+
+/** Firmalar: funnel aşaması. olumlu → Müşterilerimiz'e geçer (Muhasebe kaydı açılır). */
+export type FirmStage = "ilk_gorusme" | "teklif_verildi" | "olumlu" | "olumsuz"
+
+export type FirmSource = "manuel" | "site"
+
+/** Firmalar: CRM'in merkezindeki mühendislik firması (aday veya müşteri). */
+export interface Firm {
+  id: string
+  name: string
+  contact_name: string | null
+  phone: string | null
+  city: string | null
+  /** Firmanın kendi verdiği hizmetler (statik proje, zemin etüdü vb.). */
+  firm_services: string | null
+  website: string | null
+  instagram: string | null
+  linkedin: string | null
+  facebook: string | null
+  /** Hakkında / ilk tanışma görüşmesi. */
+  about: string | null
+  stage: FirmStage
+  stage_changed_at: string
+  /** manuel: panelden eklendi, site: funnel sitesinden otomatik geldi. */
+  source: FirmSource
+  created_by: TeamMemberRole
+  created_at: string
+}
+
+export interface FirmNote {
+  id: string
+  firm_id: string
+  body: string
+  author: TeamMemberRole
+  created_at: string
+}
+
+export type ServiceBilling = "aylik" | "tek_seferlik"
+
+/** Hizmetler: bizim verdiğimiz hizmetler kataloğu. */
+export interface Service {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  billing: ServiceBilling
+  active: boolean
+  created_at: string
+}
+
+/** Bir firmanın aldığı hizmet — fiyat katalogdan kopyalanır, firmaya özel değişebilir. */
+export interface FirmService {
+  id: string
+  firm_id: string
+  service_id: string | null
+  name: string
+  price: number
+  billing: ServiceBilling
+  start_date: string
+  /** Sadece tek seferlik: tahsil edilmesi beklenen tarih. */
+  due_date: string | null
+  /** Sadece tek seferlik: tahsil edildiği tarih; null ise bekliyor. */
+  paid_at: string | null
+  created_at: string
+}
+
+export interface FirmServiceWithFirm extends FirmService {
+  firm: Pick<Firm, "id" | "name">
 }
