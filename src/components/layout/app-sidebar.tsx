@@ -6,6 +6,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   Settings,
+  UserPlus,
   Users,
   Wallet,
 } from "lucide-react"
@@ -25,6 +26,7 @@ import {
 const menu = [
   { title: "Dashboard", href: "/muhasebe", icon: LayoutDashboard },
   { title: "Müşteriler", href: "/muhasebe/musteriler", icon: Users },
+  { title: "Potansiyel Müşteriler", href: "/muhasebe/potansiyel-musteriler", icon: UserPlus },
   { title: "Ödemeler", href: "/muhasebe/odemeler", icon: Wallet },
   { title: "Takvim", href: "/muhasebe/takvim", icon: CalendarDays },
   { title: "Ayarlar", href: "/muhasebe/ayarlar", icon: Settings },

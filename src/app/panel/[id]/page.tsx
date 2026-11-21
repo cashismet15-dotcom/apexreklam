@@ -47,11 +47,11 @@ export default async function PanelCustomerPage({
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <Link
-        href="/panel/sirketler"
+        href="/muhasebe/musteriler"
         className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
-        Şirketler&apos;e dön
+        Muhasebe &gt; Müşteriler&apos;e dön
       </Link>
 
       <PageHeader

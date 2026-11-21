@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Bug,
-  Briefcase,
   Building2,
   CalendarClock,
   Clock,
@@ -14,7 +13,6 @@ import {
   LayoutDashboard,
   Tags,
   StickyNote,
-  UserPlus,
   UserRound,
   Users,
   Video,
@@ -62,13 +60,8 @@ function buildMenu(role: TeamMemberRole): MenuItem[] {
     )
   }
 
-  // Eski yapı (halı yıkama dönemi) — yeni yapıya taşınana kadar duruyor.
-  if (canViewCustomers(role)) {
-    items.push(
-      { title: "Eski Şirketler", href: "/panel/sirketler", icon: Briefcase },
-      { title: "Potansiyel Müşteriler", href: "/panel/potansiyel-musteriler", icon: UserPlus }
-    )
-  }
+  // Eski işletmenin müşterileri ve potansiyel müşterileri Muhasebe modülünde
+  // (/muhasebe/musteriler, /muhasebe/potansiyel-musteriler) — Mühendis360'ta yok.
 
   items.push(
     { title: "Toplantılar", href: "/panel/toplantilar", icon: CalendarClock },

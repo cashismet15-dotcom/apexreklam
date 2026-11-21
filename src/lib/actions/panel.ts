@@ -831,7 +831,8 @@ export async function uploadAvatar(_prevState: ActionState, formData: FormData):
 }
 
 function revalidateLeads() {
-  revalidatePath("/panel/potansiyel-musteriler")
+  // Potansiyel Müşteriler eski işletmeye ait — Muhasebe modülüne taşındı.
+  revalidatePath("/muhasebe/potansiyel-musteriler")
 }
 
 const leadSchema = z.object({
@@ -921,5 +922,5 @@ export async function convertLeadToCustomer(leadId: string): Promise<ActionState
 
   revalidateLeads()
   revalidatePanel()
-  return { status: "success", message: "Müşteriye dönüştürüldü — Şirketler'de görünüyor." }
+  return { status: "success", message: "Müşteriye dönüştürüldü — Muhasebe > Müşteriler'de görünüyor, aylık ücretini oradan ayarla." }
 }
