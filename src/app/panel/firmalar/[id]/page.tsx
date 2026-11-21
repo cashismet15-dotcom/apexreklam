@@ -18,10 +18,12 @@ import {
   toExternalUrl,
   toWhatsappNumber,
 } from "@/lib/firms"
+import { FirmPaymentList, RecordPaymentButton } from "@/components/muhasebe/firm-payments"
+import { buildMonthEvents, monthlyFeeOf, outstandingEvents } from "@/lib/calendar"
 import {
-  getCustomerForFirm,
   getFirmById,
   getFirmNotes,
+  getFirmPayments,
   getFirmServices,
   getServices,
 } from "@/lib/firms-data"
@@ -59,12 +61,26 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
   const isOwner = role === "owner"
   const canEdit = canManageCustomers(role)
 
-  const [notes, firmServices, services, customer] = await Promise.all([
+  const [notes, firmServices, services, payments] = await Promise.all([
     getFirmNotes(id),
     getFirmServices(id),
     isOwner ? getServices(true) : Promise.resolve([]),
-    isOwner ? getCustomerForFirm(id) : Promise.resolve(null),
+    isOwner ? getFirmPayments(id) : Promise.resolve([]),
   ])
+
+  // Mühendis360 muhasebesi — bu ayın durumu ve toplam bekleyen.
+  const today = todayIso()
+  const billingFirm = { firm, services: firmServices, payments }
+  const monthlyFee = monthlyFeeOf(firmServices)
+  const thisMonth = buildMonthEvents({
+    year: Number(today.slice(0, 4)),
+    month: Number(today.slice(5, 7)),
+    todayIso: today,
+    firms: [billingFirm],
+  }).find((e) => e.kind === "aylik")
+  const outstanding = outstandingEvents([billingFirm], today)
+    .filter((e) => e.dateIso <= today)
+    .reduce((acc, e) => acc + e.remaining, 0)
 
   const socials = [
     { label: "Instagram", value: firm.instagram, base: "https://instagram.com/" },
@@ -118,7 +134,7 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
               stage={firm.stage}
               services={services}
               canConvert={isOwner}
-              defaultStartDate={addDaysIso(todayIso(), DEFAULT_START_DELAY_DAYS)}
+              defaultStartDate={addDaysIso(today, DEFAULT_START_DELAY_DAYS)}
             />
           ) : (
             <span className="text-sm">{FIRM_STAGE_LABEL[firm.stage]}</span>
@@ -191,20 +207,65 @@ export default async function FirmaPage({ params }: { params: Promise<{ id: stri
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <FirmServiceList items={firmServices} showAmounts={isOwner} />
-                {isOwner && customer ? (
-                  <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-xs">
-                    <span>
-                      Muhasebe: {formatCurrency(customer.monthly_fee)}/ay · her ayın{" "}
-                      {customer.payment_day}&apos;i
-                    </span>
-                    <Link
-                      href={`/muhasebe/musteriler/${customer.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      Ödeme geçmişini gör →
-                    </Link>
-                  </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {isOwner && firm.billing_start ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Ödemeler</CardTitle>
+                {monthlyFee > 0 ? (
+                  <CardAction>
+                    <RecordPaymentButton
+                      firmId={firm.id}
+                      firmName={firm.name}
+                      defaultAmount={thisMonth?.remaining || monthlyFee}
+                      defaultPeriod={today.slice(0, 7)}
+                      todayIso={today}
+                    />
+                  </CardAction>
                 ) : null}
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-3 text-sm">
+                  {monthlyFee > 0 ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Aylık ücret</span>
+                      <span className="font-medium">
+                        {formatCurrency(monthlyFee)} · her ayın {firm.payment_day}&apos;i
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">İlk ödeme</span>
+                    <span>{formatDate(firm.billing_start)}</span>
+                  </div>
+                  {thisMonth ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Bu ay</span>
+                      <span
+                        className={cn(
+                          "font-medium",
+                          thisMonth.status === "odendi" && "text-emerald-700 dark:text-emerald-400",
+                          thisMonth.status === "gecikti" && "text-red-700 dark:text-red-400",
+                          (thisMonth.status === "bekliyor" || thisMonth.status === "kismi") && "text-amber-700 dark:text-amber-400"
+                        )}
+                      >
+                        {thisMonth.status === "odendi"
+                          ? "Ödendi"
+                          : `${formatCurrency(thisMonth.remaining)} ${thisMonth.status === "gecikti" ? "gecikti" : "bekliyor"} · ${formatDate(thisMonth.dateIso)}`}
+                      </span>
+                    </div>
+                  ) : null}
+                  {outstanding > 0 ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Toplam bekleyen</span>
+                      <span className="font-semibold text-red-700 dark:text-red-400">{formatCurrency(outstanding)}</span>
+                    </div>
+                  ) : null}
+                </div>
+                <FirmPaymentList payments={payments} />
               </CardContent>
             </Card>
           ) : null}

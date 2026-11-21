@@ -25,11 +25,9 @@ function revalidateFirms(firmId?: string) {
   if (firmId) revalidatePath(`/panel/firmalar/${firmId}`)
 }
 
+/** Mühendis360 muhasebesi (Panel içinde) — eski işletmenin /muhasebe'sinden ayrı. */
 function revalidateMuhasebe() {
-  revalidatePath("/muhasebe")
-  revalidatePath("/muhasebe/musteriler")
-  revalidatePath("/muhasebe/takvim")
-  revalidatePath("/panel/sirketler")
+  revalidatePath("/panel/muhasebe")
 }
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""))
@@ -111,12 +109,6 @@ export async function updateFirm(
 
   const { error } = await supabase.from("firms").update(parsed.values).eq("id", id)
   if (error) return { status: "error", message: `Kaydedilemedi: ${error.message}` }
-
-  // Muhasebe kaydındaki firma adı/telefon da güncel kalsın.
-  const customerPatch: Record<string, string> = { company_name: parsed.values.name! }
-  if (parsed.values.phone) customerPatch.phone = parsed.values.phone
-  if (parsed.values.contact_name) customerPatch.contact_name = parsed.values.contact_name
-  await supabase.from("customers").update(customerPatch).eq("firm_id", id)
 
   revalidateFirms(id)
   revalidateMuhasebe()
@@ -330,34 +322,18 @@ export async function convertFirmToCustomer(
   const { error: insertError } = await supabase.from("firm_services").insert(rows)
   if (insertError) return { status: "error", message: `Hizmetler kaydedilemedi: ${insertError.message}` }
 
-  // Aylık hizmet varsa Muhasebe'de tahsilat kaydı aç (zaten bağlı kayıt varsa ücreti güncelle).
-  const monthlyFee = rows.filter((r) => r.billing === "aylik").reduce((acc, r) => acc + r.price, 0)
-  if (monthlyFee > 0) {
-    const paymentDay = Number(parsed.data.first_payment_date.slice(8, 10))
-    const { data: existing } = await supabase
-      .from("customers")
-      .select("id, monthly_fee")
-      .eq("firm_id", firmId)
-      .maybeSingle()
-
-    const { error: customerError } = existing
-      ? await supabase
-          .from("customers")
-          .update({ monthly_fee: Number(existing.monthly_fee) + monthlyFee, status: "aktif" })
-          .eq("id", existing.id)
-      : await supabase.from("customers").insert({
-          firm_id: firmId,
-          company_name: firm.name,
-          contact_name: firm.contact_name || firm.name,
-          phone: firm.phone || "-",
-          monthly_fee: monthlyFee,
-          payment_day: paymentDay,
-          // Tahsilat başlangıcı = ilk ödeme tarihi; vadeler bundan önceye düşmez.
-          start_date: parsed.data.first_payment_date,
-          status: "aktif",
-        })
-    if (customerError) {
-      return { status: "error", message: `Muhasebe kaydı açılamadı: ${customerError.message}` }
+  // Mühendis360 muhasebesi: vade günü ve tahsilat başlangıcı firmada tutulur.
+  // Daha önce ayarlandıysa (ek hizmet ekleniyorsa) mevcut düzen korunur.
+  if (!firm.payment_day || !firm.billing_start) {
+    const { error: billingError } = await supabase
+      .from("firms")
+      .update({
+        payment_day: Number(parsed.data.first_payment_date.slice(8, 10)),
+        billing_start: parsed.data.first_payment_date,
+      })
+      .eq("id", firmId)
+    if (billingError) {
+      return { status: "error", message: `Ödeme düzeni kaydedilemedi: ${billingError.message}` }
     }
   }
 
@@ -378,44 +354,112 @@ export async function removeFirmService(firmServiceId: string): Promise<ActionSt
     .from("firm_services")
     .delete()
     .eq("id", firmServiceId)
-    .select("firm_id, price, billing")
+    .select("firm_id")
     .single()
   if (error) return { status: "error", message: `Hizmet kaldırılamadı: ${error.message}` }
-
-  // Aylık hizmet kaldırıldıysa Muhasebe'deki aylık ücreti de düş.
-  if (data.billing === "aylik") {
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("id, monthly_fee")
-      .eq("firm_id", data.firm_id)
-      .maybeSingle()
-    if (customer) {
-      const next = Number(customer.monthly_fee) - Number(data.price)
-      // monthly_fee > 0 kısıtı var — son aylık hizmet de kalkarsa kaydı pasife al.
-      await supabase
-        .from("customers")
-        .update(next > 0 ? { monthly_fee: next } : { status: "pasif" })
-        .eq("id", customer.id)
-    }
-  }
 
   revalidateFirms(data.firm_id)
   revalidateMuhasebe()
   return { status: "success" }
 }
 
-/** Tek seferlik hizmeti tahsil edildi / edilmedi olarak işaretler. */
+function todayIstanbul(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" })
+}
+
+/** Tek seferlik hizmeti tahsil edildi / edilmedi olarak işaretler; tahsilat firm_payments'a yazılır. */
 export async function setOneTimePaid(firmServiceId: string, paid: boolean): Promise<ActionState> {
   await requireOwner()
-  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" })
-  const { data, error } = await supabase
+  const { data: item, error: fetchError } = await supabase
     .from("firm_services")
-    .update({ paid_at: paid ? today : null })
+    .select("id, firm_id, price, name")
     .eq("id", firmServiceId)
     .eq("billing", "tek_seferlik")
-    .select("firm_id")
-    .single()
+    .maybeSingle()
+  if (fetchError || !item) return { status: "error", message: "Hizmet bulunamadı." }
+
+  // Önce varsa eski tahsilat kaydını temizle (çift kayıt olmasın).
+  const { error: clearError } = await supabase
+    .from("firm_payments")
+    .delete()
+    .eq("firm_service_id", firmServiceId)
+  if (clearError) return { status: "error", message: `Güncellenemedi: ${clearError.message}` }
+
+  if (paid) {
+    const { error: payError } = await supabase.from("firm_payments").insert({
+      firm_id: item.firm_id,
+      firm_service_id: item.id,
+      amount: item.price,
+      payment_date: todayIstanbul(),
+      note: item.name,
+    })
+    if (payError) return { status: "error", message: `Tahsilat kaydedilemedi: ${payError.message}` }
+  }
+
+  const { error } = await supabase
+    .from("firm_services")
+    .update({ paid_at: paid ? todayIstanbul() : null })
+    .eq("id", firmServiceId)
   if (error) return { status: "error", message: `Güncellenemedi: ${error.message}` }
+
+  revalidateFirms(item.firm_id)
+  revalidateMuhasebe()
+  return { status: "success" }
+}
+
+const paymentSchema = z.object({
+  amount: z.coerce.number().positive("Tutar 0'dan büyük olmalı"),
+  payment_date: dateString,
+  period: z.string().regex(/^\d{4}-\d{2}$/, "Ay seçin"),
+  note: optionalText(500),
+})
+
+/** Aylık ücret için ödeme al (kapora / kısmi ödeme de olabilir). */
+export async function recordFirmPayment(
+  firmId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireOwner()
+  const parsed = paymentSchema.safeParse({
+    amount: formData.get("amount"),
+    payment_date: formData.get("payment_date"),
+    period: formData.get("period"),
+    note: formData.get("note"),
+  })
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Formda hatalar var.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const { error } = await supabase.from("firm_payments").insert({
+    firm_id: firmId,
+    amount: parsed.data.amount,
+    payment_date: parsed.data.payment_date,
+    period: `${parsed.data.period}-01`,
+    note: parsed.data.note || null,
+  })
+  if (error) return { status: "error", message: `Ödeme kaydedilemedi: ${error.message}` }
+  revalidateFirms(firmId)
+  revalidateMuhasebe()
+  return { status: "success", message: "Ödeme kaydedildi." }
+}
+
+export async function deleteFirmPayment(paymentId: string): Promise<ActionState> {
+  await requireOwner()
+  const { data, error } = await supabase
+    .from("firm_payments")
+    .delete()
+    .eq("id", paymentId)
+    .select("firm_id, firm_service_id")
+    .single()
+  if (error) return { status: "error", message: `Ödeme silinemedi: ${error.message}` }
+  // Tek seferlik tahsilat silindiyse hizmet tekrar "bekliyor" olsun.
+  if (data.firm_service_id) {
+    await supabase.from("firm_services").update({ paid_at: null }).eq("id", data.firm_service_id)
+  }
   revalidateFirms(data.firm_id)
   revalidateMuhasebe()
   return { status: "success" }

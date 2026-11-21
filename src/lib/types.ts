@@ -243,6 +243,10 @@ export interface Firm {
   stage_changed_at: string
   /** manuel: panelden eklendi, site: funnel sitesinden otomatik geldi. */
   source: FirmSource
+  /** Mühendis360 muhasebesi: aylık vade günü (müşteri olunca dolar). */
+  payment_day: number | null
+  /** Mühendis360 muhasebesi: ilk ödeme tarihi — vadeler bundan önceye düşmez. */
+  billing_start: string | null
   created_by: TeamMemberRole
   created_at: string
 }
@@ -286,4 +290,18 @@ export interface FirmService {
 
 export interface FirmServiceWithFirm extends FirmService {
   firm: Pick<Firm, "id" | "name">
+}
+
+/** Mühendis360 muhasebesi: firmadan alınan her ödeme. */
+export interface FirmPayment {
+  id: string
+  firm_id: string
+  amount: number
+  payment_date: string
+  /** Aylık ödemede hangi ayın ücreti (ayın 1'i); tek seferlikte null. */
+  period: string | null
+  /** Tek seferlik hizmet tahsilatıysa ilgili hizmet. */
+  firm_service_id: string | null
+  note: string | null
+  created_at: string
 }

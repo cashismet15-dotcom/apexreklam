@@ -6,7 +6,7 @@ import { LogoutButton } from "@/components/auth/logout-button"
 const apps = [
   {
     title: "Muhasebe",
-    description: "Aylık tahsilat, müşteri ve ödeme takibi.",
+    description: "Eski işletme — aylık tahsilat, müşteri ve ödeme takibi.",
     href: "/muhasebe",
     icon: Wallet,
   },
@@ -17,8 +17,8 @@ const apps = [
     icon: Sparkles,
   },
   {
-    title: "Panel",
-    description: "Ekip CRM'i — şirket kartları, görev atama ve Meta reklam raporu.",
+    title: "Mühendis360",
+    description: "Mühendislik firmaları CRM'i — firmalar, hizmetler, görevler ve kendi muhasebesi.",
     href: "/panel",
     icon: Briefcase,
   },

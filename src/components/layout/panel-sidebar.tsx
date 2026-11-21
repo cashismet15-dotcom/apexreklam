@@ -58,7 +58,7 @@ function buildMenu(role: TeamMemberRole): MenuItem[] {
   if (role === "owner") {
     items.push(
       { title: "Hizmetler", href: "/panel/hizmetler", icon: Tags },
-      { title: "Muhasebe", href: "/muhasebe", icon: Wallet }
+      { title: "Muhasebe", href: "/panel/muhasebe", icon: Wallet }
     )
   }
 
@@ -105,10 +105,10 @@ export function PanelSidebar({
       <SidebarHeader className="px-3 py-4">
         <Link href={headerHref} className="flex items-center gap-2 px-1">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
-            A
+            M
           </div>
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold">Panel</span>
+            <span className="text-sm font-semibold">Mühendis360</span>
             <span className="text-xs text-muted-foreground">
               {role === "owner" ? "Ana sayfaya dön" : "Ekip CRM'i"}
             </span>

@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  ArrowLeft,
   CalendarDays,
   LayoutDashboard,
   Settings,
@@ -29,7 +28,6 @@ const menu = [
   { title: "Ödemeler", href: "/muhasebe/odemeler", icon: Wallet },
   { title: "Takvim", href: "/muhasebe/takvim", icon: CalendarDays },
   { title: "Ayarlar", href: "/muhasebe/ayarlar", icon: Settings },
-  { title: "Panel'e Dön", href: "/panel", icon: ArrowLeft },
 ]
 
 export function AppSidebar() {
